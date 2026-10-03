@@ -126,15 +126,15 @@
     </div>
 
     <div id="gameover">
-        <h1>GAME OVER</h1>
-        <p id="gameover-text">Die Blockchain ist abgestürzt!</p>
+        <h1>Die Blockchain ist abgestürzt!</h1>
+        <p id="gameover-text">Game Over</p>
         <button class="btn" onclick="restartGame()">Nochmal versuchen</button>
     </div>
 
     <div id="win-screen">
         <h1 style="color: #ffd166; font-size: 3rem;">🎉 Herzlichen Glückwunsch! 🎉</h1>
         <p id="win-text" style="font-size: 1.8rem; font-weight: 800; color: #00ffcc; text-shadow: 0 0 20px rgba(0,255,204,0.8); margin-bottom: 25px;">
-            Du bist jetzt ein bitcoin Buckelwal
+            Du bist jetzt ein Bitcoin-Buckelwal
         </p>
         <button class="btn" onclick="restartGame()">Erneut Spielen</button>
     </div>
@@ -145,7 +145,6 @@
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
-    // Automatische Erkennung ob Touchscreen vorhanden ist
     const isTouchDevice = ('ontouchstart' in window) || (navigator.maxTouchPoints > 0);
 
     function resizeCanvas() {
@@ -179,6 +178,23 @@
             gain.connect(audioCtx.destination);
             osc.start();
             osc.stop(audioCtx.currentTime + 0.12);
+        } catch(e) {}
+    }
+
+    function playHeavyLaserSound() {
+        if (!audioCtx) return;
+        try {
+            let osc = audioCtx.createOscillator();
+            let gain = audioCtx.createGain();
+            osc.type = 'sawtooth';
+            osc.frequency.setValueAtTime(900, audioCtx.currentTime);
+            osc.frequency.exponentialRampToValueAtTime(80, audioCtx.currentTime + 0.2);
+            gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+            gain.gain.linearRampToValueAtTime(0.001, audioCtx.currentTime + 0.2);
+            osc.connect(gain);
+            gain.connect(audioCtx.destination);
+            osc.start();
+            osc.stop(audioCtx.currentTime + 0.2);
         } catch(e) {}
     }
 
@@ -259,6 +275,7 @@
     }
 
     let gameRunning = false;
+    let animationFrameId = null;
     let score = 0;
     let hp = 3;
     let wave = 1;
@@ -269,9 +286,13 @@
     let lastShot = 0;
     let shakeTimer = 0;
     let currentTierIndex = 0;
+    let weaponLevel = 0;
 
     let reached5000Btc = false;
     let megaFireworkInterval = null;
+
+    let max_bitcoins = null;
+    let lastMissileSpawnTime = 0;
 
     const tiers = [
         { name: "Shrimp", minBtc: 0, icon: "🦐" },
@@ -324,7 +345,6 @@
 
             ctx.translate(this.x, this.y);
 
-            // Realistic Shadow
             ctx.save();
             ctx.translate(0, 25);
             ctx.scale(1, 0.3);
@@ -337,7 +357,6 @@
             ctx.fill();
             ctx.restore();
 
-            // Procedural Aquatic Graphics
             switch (currentTierIndex) {
                 case 0: this.drawRealisticShrimp(); break;
                 case 1: this.drawRealisticCrab(); break;
@@ -349,7 +368,6 @@
                 case 7: this.drawRealisticHumpbackWhale(); break;
             }
 
-            // Laser Muzzle Flash
             if (isMouseDown || isDraggingPlayer || keys['Space']) {
                 ctx.save();
                 let muzzleGrad = ctx.createRadialGradient(0, -32, 0, 0, -32, 14);
@@ -610,7 +628,6 @@
 
         update() {
             if (isTouchDevice) {
-                // Handy-Logik
                 if (isDraggingPlayer && mousePos.x !== null) {
                     let dx = mousePos.x - this.x;
                     this.x += dx * 0.35;
@@ -620,7 +637,6 @@
                     }
                 }
             } else {
-                // PC-Logik (Maus + Tastatur)
                 if (mousePos.x !== null) {
                     let dx = mousePos.x - this.x;
                     this.x += dx * 0.35;
@@ -649,24 +665,47 @@
         shoot() {
             let now = Date.now();
             if (now - lastShot > this.fireRate) {
-                bullets.push(new Bullet(this.x, this.y - 30, this.laserColor));
-                playLaserSound();
+                if (weaponLevel === 0) {
+                    bullets.push(new Bullet(this.x, this.y - 30, this.laserColor));
+                    playLaserSound();
+                } else if (weaponLevel === 1) {
+                    bullets.push(new Bullet(this.x - 15, this.y - 25, this.laserColor));
+                    bullets.push(new Bullet(this.x + 15, this.y - 25, this.laserColor));
+                    playLaserSound();
+                } else if (weaponLevel === 2) {
+                    bullets.push(new Bullet(this.x, this.y - 30, this.laserColor));
+                    bullets.push(new Bullet(this.x - 18, this.y - 22, this.laserColor));
+                    bullets.push(new Bullet(this.x + 18, this.y - 22, this.laserColor));
+                    playLaserSound();
+                } else if (weaponLevel === 3) {
+                    bullets.push(new Bullet(this.x, this.y - 30, this.laserColor));
+                    bullets.push(new Bullet(this.x - 12, this.y - 25, this.laserColor));
+                    bullets.push(new Bullet(this.x - 24, this.y - 20, this.laserColor));
+                    bullets.push(new Bullet(this.x + 12, this.y - 25, this.laserColor));
+                    bullets.push(new Bullet(this.x + 24, this.y - 20, this.laserColor));
+                    playLaserSound();
+                } else if (weaponLevel >= 4) {
+                    bullets.push(new Bullet(this.x, this.y - 35, '#ff00ff', 22, 6, 40));
+                    bullets.push(new Bullet(this.x - 22, this.y - 28, '#ff00ff', 22, 6, 40));
+                    bullets.push(new Bullet(this.x + 22, this.y - 28, '#ff00ff', 22, 6, 40));
+                    playHeavyLaserSound();
+                }
                 lastShot = now;
             }
         }
     }
 
     class Bullet {
-        constructor(x, y, color) {
+        constructor(x, y, color, speed = 16, radius = 4.5, length = 18) {
             this.x = x; this.y = y; this.color = color;
-            this.speed = 16; this.radius = 4.5;
+            this.speed = speed; this.radius = radius; this.length = length;
         }
         draw() {
             ctx.save();
             ctx.fillStyle = '#ffffff'; ctx.shadowBlur = 15; ctx.shadowColor = this.color;
             ctx.beginPath(); ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2); ctx.fill();
-            ctx.strokeStyle = this.color; ctx.lineWidth = 3;
-            ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.x, this.y + 18); ctx.stroke();
+            ctx.strokeStyle = this.color; ctx.lineWidth = this.radius > 5 ? this.radius : 3;
+            ctx.beginPath(); ctx.moveTo(this.x, this.y); ctx.lineTo(this.x, this.y + this.length); ctx.stroke();
             ctx.restore();
         }
         update() { this.y -= this.speed; }
@@ -700,6 +739,156 @@
         update() {
             this.y += this.speed;
             this.rotation += this.rotSpeed;
+        }
+    }
+
+    class EnemyProjectile {
+        constructor(x, y, targetX, targetY) {
+            this.x = x;
+            this.y = y;
+            this.radius = 6;
+            this.speed = 5;
+            let angle = Math.atan2(targetY - y, targetX - x);
+            this.vx = Math.cos(angle) * this.speed;
+            this.vy = Math.sin(angle) * this.speed;
+        }
+        draw() {
+            ctx.save();
+            ctx.fillStyle = '#ff3838';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#ff3838';
+            ctx.beginPath();
+            ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.restore();
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+        }
+    }
+
+    class HomingMissile {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.radius = 16;
+            this.speed = 3.64; 
+            this.vx = 0;
+            this.vy = this.speed;
+            this.health = 1;
+            this.lastShotTime = Date.now();
+            this.fireShot();
+        }
+
+        fireShot() {
+            enemyProjectiles.push(new EnemyProjectile(this.x, this.y, player.x, player.y));
+            playLaserSound();
+        }
+
+        draw() {
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            ctx.fillStyle = '#00ffcc';
+            ctx.shadowBlur = 10;
+            ctx.shadowColor = '#00ffcc';
+            ctx.beginPath();
+            ctx.moveTo(-4, -12);
+            ctx.lineTo(0, -22);
+            ctx.lineTo(4, -12);
+            ctx.fill();
+
+            let ethGrad = ctx.createLinearGradient(-12, -12, 12, 12);
+            ethGrad.addColorStop(0, '#8c9eff');
+            ethGrad.addColorStop(0.5, '#627eea');
+            ethGrad.addColorStop(1, '#3c3c3d');
+
+            ctx.fillStyle = ethGrad;
+            ctx.shadowBlur = 12;
+            ctx.shadowColor = '#627eea';
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 1.5;
+            ctx.stroke();
+
+            ctx.fillStyle = '#ffffff';
+            ctx.font = '900 12px "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('ETH', 0, 1);
+
+            ctx.restore();
+        }
+
+        update() {
+            let angle = Math.atan2(player.y - this.y, player.x - this.x);
+            let targetVx = Math.cos(angle) * this.speed;
+            let targetVy = Math.sin(angle) * this.speed;
+
+            this.vx += (targetVx - this.vx) * 0.08;
+            this.vy += (targetVy - this.vy) * 0.08;
+
+            this.x += this.vx;
+            this.y += this.vy;
+
+            let now = Date.now();
+            if (now - this.lastShotTime >= 2000) {
+                this.fireShot();
+                this.lastShotTime = now;
+            }
+        }
+    }
+
+    class PowerUpCoin {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.radius = 20;
+            this.speed = 1.8;
+            this.rotation = 0;
+            this.animTick = 0;
+        }
+        draw() {
+            this.animTick += 0.05;
+            this.rotation += 0.02;
+            ctx.save();
+            ctx.translate(this.x, this.y);
+            ctx.rotate(this.rotation);
+
+            let glow = Math.sin(this.animTick * 3) * 8 + 16;
+            ctx.shadowBlur = glow;
+            ctx.shadowColor = '#9b59b6';
+
+            let coinGrad = ctx.createRadialGradient(-5, -5, 2, 0, 0, this.radius);
+            coinGrad.addColorStop(0, '#e84393');
+            coinGrad.addColorStop(0.5, '#9b59b6');
+            coinGrad.addColorStop(1, '#6c5ce7');
+
+            ctx.fillStyle = coinGrad;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+            ctx.fill();
+
+            ctx.strokeStyle = '#ffd700';
+            ctx.lineWidth = 2.5;
+            ctx.beginPath();
+            ctx.arc(0, 0, this.radius - 2, 0, Math.PI * 2);
+            ctx.stroke();
+
+            ctx.shadowBlur = 0;
+            ctx.fillStyle = '#ffffff';
+            ctx.font = `900 20px "Segoe UI", sans-serif`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('⚡', 0, 1);
+            ctx.restore();
+        }
+        update() {
+            this.y += this.speed;
         }
     }
 
@@ -747,16 +936,24 @@
     let player = new Player();
     let bullets = [];
     let enemies = [];
+    let homingMissiles = [];
+    let enemyProjectiles = [];
+    let powerUpCoins = [];
     let particles = [];
     let stars = [];
+
+    let spawnedOctopusCoin = false;
+    let spawnedDolphinCoin = false;
+    let spawnedSharkCoin = false;
+    let spawnedWhaleCoin = false;
 
     for (let i = 0; i < 100; i++) {
         stars.push(new Star());
     }
 
-    function createFirework(x, y, particleCount = 60, scale = 1.5) {
+    function createFirework(x, y, particleCount = 30, scale = 1.5) {
         playFireworkBoom();
-        const colors = ['#F7931A', '#ff0055', '#00ffcc', '#ffcc00', '#ffffff', '#9b59b6'];
+        const colors = ['#F7931A', '#ffcc00', '#00ffcc', '#ffffff', '#9b59b6'];
         for (let i = 0; i < particleCount; i++) {
             let color = colors[Math.floor(Math.random() * colors.length)];
             particles.push(new Particle(x, y, color, scale));
@@ -768,7 +965,7 @@
             setTimeout(() => {
                 let x = Math.random() * (canvas.width - 200) + 100;
                 let y = Math.random() * (canvas.height * 0.5) + 100;
-                createFirework(x, y, 70, 1.8);
+                createFirework(x, y, 35, 1.8);
             }, i * 200);
         }
     }
@@ -778,15 +975,17 @@
         megaFireworkInterval = setInterval(() => {
             let x = Math.random() * canvas.width;
             let y = Math.random() * canvas.height * 0.7;
-            createFirework(x, y, 100, 2.5);
-        }, 200);
+            createFirework(x, y, 50, 2.5);
+        }, 350);
     }
 
     function spawnWave() {
-        let count = 4 + wave * 2;
-        // Bitcoins beschleunigt: Startgeschwindigkeit von 0.45 auf 1.2 und höheres Skalierungslimit erhöht
-        let speed = 1.2 + Math.log10(wave) * 0.8;
-        if (speed > 4.5) speed = 4.5;
+        let effectiveWave = Math.min(wave, 60);
+        let count = Math.round((4 + effectiveWave * 2) * 0.8);
+        if (count < 1) count = 1;
+
+        let speed = (1.2 + Math.log10(effectiveWave) * 0.8) * 1.1;
+        if (speed > 5.0) speed = 5.0;
 
         for (let i = 0; i < count; i++) {
             let type = Math.random() < 0.2 ? 'large' : Math.random() < 0.5 ? 'medium' : 'small';
@@ -811,8 +1010,19 @@
             currentTierIndex = newIndex;
             playCashSound();
 
-            if (tiers[currentTierIndex].name === "Wal") {
-                wave = 64;
+            let tierName = tiers[currentTierIndex].name;
+            if (tierName === "Oktopus" && !spawnedOctopusCoin) {
+                spawnedOctopusCoin = true;
+                powerUpCoins.push(new PowerUpCoin(canvas.width / 2, -50));
+            } else if (tierName === "Delfin" && !spawnedDolphinCoin) {
+                spawnedDolphinCoin = true;
+                powerUpCoins.push(new PowerUpCoin(canvas.width / 2, -50));
+            } else if (tierName === "Hai" && !spawnedSharkCoin) {
+                spawnedSharkCoin = true;
+                powerUpCoins.push(new PowerUpCoin(canvas.width / 2, -50));
+            } else if (tierName === "Wal" && !spawnedWhaleCoin) {
+                spawnedWhaleCoin = true;
+                powerUpCoins.push(new PowerUpCoin(canvas.width / 2, -50));
             }
 
             triggerLevelUpFireworks();
@@ -838,7 +1048,6 @@
         document.getElementById('hud-wave').innerText = `Welle: ${wave}`;
     }
 
-    // Keyboard Handler
     window.addEventListener('keydown', e => {
         keys[e.code] = true;
         if (!isTouchDevice && (e.code.startsWith('Arrow') || e.code === 'KeyA' || e.code === 'KeyD' || e.code === 'KeyW' || e.code === 'KeyS')) {
@@ -847,7 +1056,6 @@
     });
     window.addEventListener('keyup', e => { keys[e.code] = false; });
 
-    // Touch & Maus Steuerung
     function handleStart(x, y) {
         if (isTouchDevice) {
             if (player.isTouched(x, y)) {
@@ -884,7 +1092,6 @@
         }
     }
 
-    // Event Listener registrieren
     window.addEventListener('mousemove', e => { handleMove(e.clientX, e.clientY); });
     window.addEventListener('mousedown', e => { handleStart(e.clientX, e.clientY); });
     window.addEventListener('mouseup', () => { handleEnd(); });
@@ -912,10 +1119,106 @@
             player.update();
             player.draw();
 
+            if (currentTierIndex >= 2) {
+                let nowTime = Date.now();
+                if (nowTime - lastMissileSpawnTime >= 3000) {
+                    let margin = 80;
+                    let mx = margin + Math.random() * (canvas.width - margin * 2);
+                    let my = -50;
+                    homingMissiles.push(new HomingMissile(mx, my));
+                    lastMissileSpawnTime = nowTime;
+                }
+            }
+
             for (let i = bullets.length - 1; i >= 0; i--) {
                 bullets[i].update();
                 bullets[i].draw();
-                if (bullets[i].y < -20) bullets.splice(i, 1);
+                if (bullets[i].y < -40) bullets.splice(i, 1);
+            }
+
+            for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
+                let ep = enemyProjectiles[i];
+                ep.update();
+                ep.draw();
+
+                let dist = Math.hypot(player.x - ep.x, player.y - ep.y);
+                if (dist < (player.width / 2) + ep.radius) {
+                    hp--;
+                    shakeTimer = 30;
+                    playCrashSound();
+                    weaponLevel = 0;
+                    enemyProjectiles.splice(i, 1);
+                    if (hp <= 0) {
+                        endGame();
+                        return;
+                    }
+                    continue;
+                }
+
+                if (ep.x < -50 || ep.x > canvas.width + 50 || ep.y < -50 || ep.y > canvas.height + 50) {
+                    enemyProjectiles.splice(i, 1);
+                }
+            }
+
+            for (let i = powerUpCoins.length - 1; i >= 0; i--) {
+                let coin = powerUpCoins[i];
+                coin.update();
+                coin.draw();
+
+                let dist = Math.hypot(player.x - coin.x, player.y - coin.y);
+                if (dist < (player.width / 2) + coin.radius) {
+                    weaponLevel = Math.min(4, weaponLevel + 1);
+                    playCashSound();
+                    for (let p = 0; p < 25; p++) {
+                        particles.push(new Particle(coin.x, coin.y, '#9b59b6', 1.5));
+                    }
+                    powerUpCoins.splice(i, 1);
+                    continue;
+                }
+
+                if (coin.y > canvas.height + 40) {
+                    powerUpCoins.splice(i, 1);
+                }
+            }
+
+            for (let i = homingMissiles.length - 1; i >= 0; i--) {
+                let m = homingMissiles[i];
+                m.update();
+                m.draw();
+
+                let dist = Math.hypot(player.x - m.x, player.y - m.y);
+                if (dist < (player.width / 2) + m.radius) {
+                    hp--;
+                    shakeTimer = 35;
+                    playCrashSound();
+                    weaponLevel = 0;
+                    homingMissiles.splice(i, 1);
+                    if (hp <= 0) {
+                        endGame();
+                        return;
+                    }
+                    continue;
+                }
+
+                let destroyed = false;
+                for (let j = bullets.length - 1; j >= 0; j--) {
+                    let b = bullets[j];
+                    let hitDist = Math.hypot(b.x - m.x, b.y - m.y);
+                    if (hitDist < m.radius + b.radius + 4) {
+                        bullets.splice(j, 1);
+                        destroyed = true;
+                        break;
+                    }
+                }
+
+                if (destroyed) {
+                    playBubblePopSound();
+                    for (let p = 0; p < 15; p++) {
+                        particles.push(new Particle(m.x, m.y, '#627eea'));
+                    }
+                    homingMissiles.splice(i, 1);
+                    continue;
+                }
             }
 
             for (let i = enemies.length - 1; i >= 0; i--) {
@@ -928,6 +1231,7 @@
                     hp--;
                     shakeTimer = 35;
                     playCrashSound();
+                    weaponLevel = 0;
                     enemies.splice(i, 1);
                     if (hp <= 0) {
                         endGame();
@@ -949,15 +1253,18 @@
                         bullets.splice(j, 1);
                         if (e.health <= 0) {
                             playBubblePopSound();
-                            for (let p = 0; p < 20; p++) {
-                                let colors = ['#F7931A', '#ffcc00', '#ff4757', '#ffffff'];
+                            for (let p = 0; p < 10; p++) {
+                                let colors = ['#F7931A', '#ffcc00', '#ffffff', '#9b59b6'];
                                 particles.push(new Particle(e.x, e.y, colors[Math.floor(Math.random() * colors.length)]));
                             }
                             enemies.splice(i, 1);
 
-                            let baseSats = 10000000;
-                            let mult = getMultiplier();
-                            score += baseSats * mult;
+                            let currentBtc = score / 100000000;
+                            if (max_bitcoins === null || currentBtc < max_bitcoins) {
+                                let baseSats = 10290813;
+                                let mult = getMultiplier();
+                                score += baseSats * mult;
+                            }
 
                             updateTierAndMilestones();
                         }
@@ -966,7 +1273,7 @@
                 }
             }
 
-            if (enemies.length === 0) {
+            if (enemies.length === 0 && homingMissiles.length === 0) {
                 wave++;
                 spawnWave();
             }
@@ -982,11 +1289,16 @@
             }
         }
 
-        requestAnimationFrame(gameLoop);
+        if (gameRunning) {
+            animationFrameId = requestAnimationFrame(gameLoop);
+        }
     }
 
     function startGame() {
         initAudio();
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+        }
         if (megaFireworkInterval) {
             clearInterval(megaFireworkInterval);
             megaFireworkInterval = null;
@@ -998,24 +1310,42 @@
         hp = 3;
         wave = 1;
         currentTierIndex = 0;
+        weaponLevel = 0;
+        spawnedOctopusCoin = false;
+        spawnedDolphinCoin = false;
+        spawnedSharkCoin = false;
+        spawnedWhaleCoin = false;
         reached5000Btc = false;
+        lastMissileSpawnTime = 0;
         enemies = [];
+        homingMissiles = [];
+        enemyProjectiles = [];
+        powerUpCoins = [];
         bullets = [];
         particles = [];
         player = new Player();
         gameRunning = true;
+        animationFrameId = requestAnimationFrame(gameLoop);
         spawnWave();
     }
 
     function endGame() {
         gameRunning = false;
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
         let btc = score / 100000000;
-        document.getElementById('gameover-text').innerText = `Die Blockchain ist abgestürzt!\nWelle: ${wave} | Sats: ${score.toLocaleString()} (${btc.toFixed(8)} BTC)\nFinales Tier: ${tiers[currentTierIndex].icon} ${tiers[currentTierIndex].name}`;
+        document.getElementById('gameover-text').innerText = `Game Over\nWelle: ${wave} | Sats: ${score.toLocaleString()} (${btc.toFixed(8)} BTC)\nFinales Tier: ${tiers[currentTierIndex].icon} ${tiers[currentTierIndex].name}`;
         document.getElementById('gameover').style.display = 'flex';
     }
 
     function winGame() {
         gameRunning = false;
+        if (animationFrameId) {
+            cancelAnimationFrame(animationFrameId);
+            animationFrameId = null;
+        }
         document.getElementById('win-screen').style.display = 'flex';
         triggerMegaFireworks();
     }
@@ -1024,7 +1354,7 @@
         startGame();
     }
 
-    requestAnimationFrame(gameLoop);
+    animationFrameId = requestAnimationFrame(gameLoop);
 </script>
 </body>
 </html>
