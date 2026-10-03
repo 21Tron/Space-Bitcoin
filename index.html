@@ -119,7 +119,7 @@
     </div>
 
     <div id="startgame">
-        <div class="author-tag">Erstellt von TRON</div>
+        <div class="author-tag">Powered by TRON GAMES</div>
         <h1>SPACE BITCOIN</h1>
         <p>Verteidige die Blockchain! Entwickle dich vom Shrimp bis zum mächtigen goldenen Buckelwal weiter!</p>
         <button class="btn" onclick="startGame()">Spiel Starten</button>
@@ -784,8 +784,9 @@
 
     function spawnWave() {
         let count = 4 + wave * 2;
-        let speed = 0.45 + Math.log10(wave) * 0.35;
-        if (speed > 1.9) speed = 1.9;
+        // Bitcoins beschleunigt: Startgeschwindigkeit von 0.45 auf 1.2 und höheres Skalierungslimit erhöht
+        let speed = 1.2 + Math.log10(wave) * 0.8;
+        if (speed > 4.5) speed = 4.5;
 
         for (let i = 0; i < count; i++) {
             let type = Math.random() < 0.2 ? 'large' : Math.random() < 0.5 ? 'medium' : 'small';
