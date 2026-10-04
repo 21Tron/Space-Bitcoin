@@ -1,6 +1,6 @@
-==================================================
+
 DEUTSCHE VERSION
-==================================================
+
 
 🚀 SPACE BITCOIN – Verteidige die Blockchain! 🚀
 
@@ -28,9 +28,9 @@ Bist du bereit für das ultimative Bitcoin-Weltraumabenteuer? Tauche ein in SPAC
 
 👉 Beweise dein Diamond-Hand-Geschick und rette die Blockchain noch heute!
 
-==================================================
+
 ENGLISH VERSION
-==================================================
+
 
 🚀 SPACE BITCOIN – Defend the Blockchain! 🚀
 
