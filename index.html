@@ -1804,12 +1804,9 @@
                             }
                             enemies.splice(i, 1);
 
-                            let currentBtc = score / 100000000;
-                            if (max_bitcoins === null || currentBtc < max_bitcoins) {
-                                let baseSats = 10290813;
-                                let mult = getMultiplier();
-                                score += baseSats * mult;
-                            }
+                            let baseSats = 10290813;
+                            let mult = getMultiplier();
+                            score += baseSats * mult;
 
                             updateTierAndMilestones();
                         }
@@ -1867,6 +1864,7 @@
         weaponLevel = 0;
         bonusBtcMultiplier = 3;
         reached5000Btc = false;
+        max_bitcoins = null;
         bossState = 'INACTIVE';
         boss = null;
         lastMissileSpawnTime = 0;
