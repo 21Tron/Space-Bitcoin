@@ -859,7 +859,7 @@
             this.x = canvas.width / 2;
             this.y = 168;
             this.radius = 62.5;
-            this.maxHp = 1100;
+            this.maxHp = 550;
             this.hp = this.maxHp;
             this.speed = 3.5;
             this.dir = 1;
@@ -1360,8 +1360,8 @@
         
         let isBossActive = (bossState === 'WARNING' || bossState === 'ACTIVE');
 
-        document.getElementById('hud-tier').style.display = 'block';
-        document.getElementById('hud-btc').style.display = 'block';
+        document.getElementById('hud-tier').style.display = isBossActive ? 'none' : 'block';
+        document.getElementById('hud-btc').style.display = isBossActive ? 'none' : 'block';
         document.getElementById('hud-mult').style.display = isBossActive ? 'none' : 'block';
         document.getElementById('hud-score').style.display = isBossActive ? 'none' : 'block';
         document.getElementById('hud-hp').style.display = 'block';
