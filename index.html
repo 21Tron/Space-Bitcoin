@@ -193,7 +193,7 @@
     </div>
 
     <div id="boss-hp-container">
-        <div id="boss-hp-title">⚠️ ENDBOSS: ETH-MONSTER DEFI-OVERLORD ⚠️</div>
+        <div id="boss-hp-title">⚠️️ ENDBOSS: ETH-MONSTER DEFI-OVERLORD ⚠️</div>
         <div id="boss-hp-bar-bg">
             <div id="boss-hp-bar-fill"></div>
         </div>
@@ -403,7 +403,6 @@
         } catch(e) {}
     }
 
-    /* Retro System Sound for Boss Warning */
     function playBossWarningSound() {
         if (!audioCtx) return;
         try {
@@ -443,7 +442,6 @@
     let max_bitcoins = null;
     let lastMissileSpawnTime = 0;
 
-    // Boss State Variables
     let bossState = 'INACTIVE'; // 'INACTIVE', 'WARNING', 'ACTIVE', 'DEFEATED'
     let bossWarningTimer = 0;
     let boss = null;
@@ -842,12 +840,11 @@
         }
     }
 
-    /* Giant ETH Boss Class */
     class BossETH {
         constructor() {
             this.x = canvas.width / 2;
-            this.y = 168; // ca. 1 cm nach unten verschoben
-            this.radius = 62.5; // 50% kleiner als zuvor (von 125 auf 62.5)
+            this.y = 168;
+            this.radius = 62.5;
             this.maxHp = 1100;
             this.hp = this.maxHp;
             this.speed = 3.5;
@@ -861,7 +858,6 @@
             ctx.save();
             ctx.translate(this.x, this.y);
 
-            // Draw Tentacles (8 animated tentacles)
             for (let i = 0; i < 8; i++) {
                 let angle = (i / 8) * Math.PI * 2;
                 let wave = Math.sin(this.animTick * 2 + i) * 10;
@@ -881,7 +877,6 @@
                 ctx.stroke();
             }
 
-            // Giant ETH Coin Body
             let ethGrad = ctx.createRadialGradient(-10, -10, 5, 0, 0, this.radius);
             ethGrad.addColorStop(0, '#ffffff');
             ethGrad.addColorStop(0.3, '#8c9eff');
@@ -899,7 +894,6 @@
             ctx.lineWidth = 3;
             ctx.stroke();
 
-            // ETH Diamond Icon in center
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
             ctx.moveTo(0, -30);
@@ -922,7 +916,6 @@
         }
 
         update() {
-            // Left - Right Movement Only
             this.x += this.speed * this.dir;
             if (this.x < this.radius + 20) {
                 this.x = this.radius + 20;
@@ -932,7 +925,6 @@
                 this.dir = -1;
             }
 
-            // Fire ETH Homing Missiles from Tentacles continuously
             let now = Date.now();
             if (now - this.lastAttackTime > 1800) {
                 let tentacleOffsetX = (Math.random() - 0.5) * (this.radius * 2);
@@ -940,7 +932,6 @@
                 this.lastAttackTime = now;
             }
 
-            // Update UI Health Bar
             let fillPercent = Math.max(0, (this.hp / this.maxHp) * 100);
             document.getElementById('boss-hp-bar-fill').style.width = fillPercent + '%';
         }
@@ -1010,7 +1001,6 @@
             ctx.translate(this.x, this.y);
             ctx.rotate(this.rotation);
 
-            // Stacheln zeichnen (Rot belassen)
             ctx.fillStyle = '#ff2a2a';
             ctx.strokeStyle = '#ff7675';
             ctx.lineWidth = 2;
@@ -1028,7 +1018,6 @@
                 ctx.restore();
             }
 
-            // Minenkörper (Inneres Schwarz)
             ctx.fillStyle = '#000000';
             ctx.shadowBlur = 15;
             ctx.shadowColor = '#ff0000';
@@ -1036,7 +1025,6 @@
             ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
             ctx.fill();
 
-            // FUD Schriftzug in der Mitte (gut lesbar)
             ctx.fillStyle = '#ffffff';
             ctx.font = '900 11px "Segoe UI", sans-serif';
             ctx.textAlign = 'center';
@@ -1314,22 +1302,17 @@
         }
     }
 
-    /* Start Boss Intro Transition */
     function triggerBossTransition() {
         bossState = 'WARNING';
         bossWarningTimer = Date.now();
 
-        // Clear regular enemies, mines & missiles immediately
         enemies = [];
         spikeMines = [];
         homingMissiles = [];
         enemyProjectiles = [];
         powerUpCoins = [];
 
-        // Max out player weapon strength
         weaponLevel = 2;
-
-        // Play Retro Warning Sound
         playBossWarningSound();
     }
 
@@ -1350,7 +1333,6 @@
             triggerLevelUpFireworks();
         }
 
-        // Trigger Boss on reaching Gold Humpback Whale (5000 BTC)
         if (btcTotal >= 5000 && !reached5000Btc) {
             reached5000Btc = true;
             triggerBossTransition();
@@ -1361,12 +1343,23 @@
         let btc = score / 100000000;
         let mult = getMultiplier();
         let tierObj = tiers[currentTierIndex];
+        
+        let isBossActive = (bossState === 'WARNING' || bossState === 'ACTIVE');
+
+        // Gemäss Anforderung: Beim Endboss bleiben BTC, Tier Art und HP sichtbar, Sats entfernt (oder wie gewünscht angepasst)
+        document.getElementById('hud-tier').style.display = 'block';
+        document.getElementById('hud-btc').style.display = 'block';
+        document.getElementById('hud-mult').style.display = isBossActive ? 'none' : 'block';
+        document.getElementById('hud-score').style.display = isBossActive ? 'none' : 'block'; // Sats ausgeblendet beim Endboss
+        document.getElementById('hud-hp').style.display = 'block';
+        document.getElementById('hud-wave').style.display = isBossActive ? 'none' : 'block';
+
         document.getElementById('hud-tier').innerText = `Tier: ${tierObj.icon} ${tierObj.name}`;
         document.getElementById('hud-btc').innerText = `BTC: ${btc.toFixed(8)}`;
         document.getElementById('hud-mult').innerText = `Rendite: ${mult}x`;
         document.getElementById('hud-score').innerText = `Sats: ${score.toLocaleString()}`;
         document.getElementById('hud-hp').innerText = `HP: ${'₿'.repeat(Math.max(0, hp))}`;
-        document.getElementById('hud-wave').innerText = bossState === 'INACTIVE' ? `Welle: ${wave}` : `⚠️ BOSS PHASE ⚠️`;
+        document.getElementById('hud-wave').innerText = `Welle: ${wave}`;
     }
 
     window.addEventListener('keydown', e => {
@@ -1438,7 +1431,6 @@
                 player.draw();
             }
 
-            // --- BOSS WARNING PHASE (5 SECONDS) ---
             if (bossState === 'WARNING') {
                 let elapsed = (Date.now() - bossWarningTimer) / 1000;
 
@@ -1463,22 +1455,21 @@
                 }
             }
 
-            // --- BOSS ACTIVE PHASE ---
             if (bossState === 'ACTIVE' && boss) {
                 boss.update();
                 boss.draw();
 
-                // Beim Endboss fallen alle 6 Sekunden 2 Minen herunter
                 let nowTime = Date.now();
                 if (nowTime - lastBossMineSpawn >= 6000) {
-                    for (let m = 0; m < 2; m++) {
-                        let mx = Math.random() * (canvas.width - 160) + 80;
-                        spikeMines.push(new SpikeMine(mx, -50, 4, true));
-                    }
+                    let mxMine = Math.random() * (canvas.width - 160) + 80;
+                    spikeMines.push(new SpikeMine(mxMine, -50, 4, true));
+
+                    let mxMissile = Math.random() * (canvas.width - 160) + 80;
+                    homingMissiles.push(new HomingMissile(mxMissile, -50, 'USDT'));
+
                     lastBossMineSpawn = nowTime;
                 }
 
-                // Player bullets hit Boss
                 for (let j = bullets.length - 1; j >= 0; j--) {
                     let b = bullets[j];
                     let hitDist = Math.hypot(b.x - boss.x, b.y - boss.y);
@@ -1488,11 +1479,9 @@
                         particles.push(new Particle(b.x, b.y, '#8c9eff', 0.8));
 
                         if (boss.hp <= 0) {
-                            // Boss Defeated!
                             bossState = 'DEFEATED';
                             document.getElementById('boss-hp-container').style.display = 'none';
 
-                            // Create gold coin rain for exactly 2 seconds
                             playGlitterSparkleSound();
                             for (let i = 0; i < 80; i++) {
                                 winningCoins.push(new GoldRainCoin());
@@ -1501,14 +1490,12 @@
                                 winningCoins = [];
                             }, 2000);
 
-                            // Trigger Whitepaper Rollout first
                             startCreditsRoll();
                         }
                     }
                 }
             }
 
-            // Regular Spawn logic (if boss inactive)
             if (bossState === 'INACTIVE' && currentTierIndex >= 2) {
                 let nowTime = Date.now();
                 if (nowTime - lastMissileSpawnTime >= 3000) {
@@ -1520,14 +1507,12 @@
                 }
             }
 
-            // Bullets update
             for (let i = bullets.length - 1; i >= 0; i--) {
                 bullets[i].update();
                 bullets[i].draw();
                 if (bullets[i].y < -40) bullets.splice(i, 1);
             }
 
-            // Stachlige Minen Update (Nicht abschießbar, nur ausweichen!)
             for (let i = spikeMines.length - 1; i >= 0; i--) {
                 let sm = spikeMines[i];
                 sm.update();
@@ -1558,7 +1543,6 @@
                 }
             }
 
-            // Enemy Projectiles update
             for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
                 let ep = enemyProjectiles[i];
                 ep.update();
@@ -1588,7 +1572,6 @@
                 }
             }
 
-            // Power-Up Coins update
             for (let i = powerUpCoins.length - 1; i >= 0; i--) {
                 let coin = powerUpCoins[i];
                 coin.update();
@@ -1617,14 +1600,12 @@
                 }
             }
 
-            // Floating Text
             for (let i = floatingTexts.length - 1; i >= 0; i--) {
                 floatingTexts[i].update();
                 floatingTexts[i].draw();
                 if (floatingTexts[i].life <= 0) floatingTexts.splice(i, 1);
             }
 
-            // Homing Missiles update
             for (let i = homingMissiles.length - 1; i >= 0; i--) {
                 let m = homingMissiles[i];
                 m.update();
@@ -1669,7 +1650,6 @@
                 }
             }
 
-            // Normal Enemies update
             for (let i = enemies.length - 1; i >= 0; i--) {
                 let e = enemies[i];
                 e.update();
@@ -1733,7 +1713,6 @@
                 spawnWave();
             }
 
-            // Winning Rain animation
             for (let i = winningCoins.length - 1; i >= 0; i--) {
                 winningCoins[i].update();
                 winningCoins[i].draw();
@@ -1745,7 +1724,6 @@
             updateHUD();
         }
 
-        // Particles Loop
         for (let i = particles.length - 1; i >= 0; i--) {
             particles[i].update();
             particles[i].draw();
@@ -1819,7 +1797,6 @@
             creditsScrollY -= 0.6;
             creditsContent.style.top = creditsScrollY + '%';
 
-            // Nach Abschluss des Abspanns den Gratulationsbildschirm anzeigen
             if (creditsScrollY < -210) {
                 clearInterval(creditsInterval);
                 creditsInterval = null;
