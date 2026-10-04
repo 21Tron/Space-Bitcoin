@@ -273,9 +273,9 @@
     function resizeCanvas() {
         canvas.width = window.innerWidth;
         canvas.height = window.innerHeight;
+        initStars();
     }
     window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
 
     let audioCtx = null;
     function initAudio() {
@@ -1256,9 +1256,14 @@
     let particles = [];
     let stars = [];
 
-    for (let i = 0; i < 100; i++) {
-        stars.push(new Star());
+    function initStars() {
+        stars = [];
+        for (let i = 0; i < 100; i++) {
+            stars.push(new Star());
+        }
     }
+
+    resizeCanvas();
 
     function createFirework(x, y, particleCount = 15, scale = 1.5) {
         playFireworkBoom();
@@ -1357,7 +1362,7 @@
         let btc = score / 100000000;
         let mult = getMultiplier();
         let tierObj = tiers[currentTierIndex];
-        
+
         let isBossActive = (bossState === 'WARNING' || bossState === 'ACTIVE');
 
         document.getElementById('hud-tier').style.display = isBossActive ? 'none' : 'block';
