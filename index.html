@@ -193,7 +193,7 @@
     </div>
 
     <div id="boss-hp-container">
-        <div id="boss-hp-title">⚠ ENDBOSS: ETH-MONSTER DEFI-OVERLORD ⚠️</div>
+        <div id="boss-hp-title">⚠️ ENDBOSS: ETH-MONSTER DEFI-OVERLORD ⚠️</div>
         <div id="boss-hp-bar-bg">
             <div id="boss-hp-bar-fill"></div>
         </div>
@@ -440,7 +440,6 @@
     let bonusBtcMultiplier = 3;
 
     let reached5000Btc = false;
-    let megaFireworkInterval = null;
     let max_bitcoins = null;
     let lastMissileSpawnTime = 0;
 
@@ -502,24 +501,6 @@
                 ctx.translate((Math.random() - 0.5) * 10, (Math.random() - 0.5) * 10);
             }
 
-            // Draw Giant Laser Beam for Humpback Whale Tier
-            if (currentTierIndex === 7 && (isMouseDown || isDraggingPlayer || keys['Space'])) {
-                ctx.save();
-                let beamWidth = 92; // Breedte van de Buckelwal
-                let laserGrad = ctx.createLinearGradient(this.x - beamWidth / 2, 0, this.x + beamWidth / 2, 0);
-                laserGrad.addColorStop(0, 'rgba(241, 196, 15, 0.2)');
-                laserGrad.addColorStop(0.2, 'rgba(255, 255, 255, 0.9)');
-                laserGrad.addColorStop(0.5, 'rgba(247, 147, 26, 1)');
-                laserGrad.addColorStop(0.8, 'rgba(255, 255, 255, 0.9)');
-                laserGrad.addColorStop(1, 'rgba(241, 196, 15, 0.2)');
-
-                ctx.fillStyle = laserGrad;
-                ctx.shadowBlur = 30;
-                ctx.shadowColor = '#f1c40f';
-                ctx.fillRect(this.x - beamWidth / 2, 0, beamWidth, this.y - 35);
-                ctx.restore();
-            }
-
             ctx.translate(this.x, this.y);
 
             ctx.save();
@@ -549,7 +530,7 @@
                 ctx.save();
                 let muzzleGrad = ctx.createRadialGradient(0, -32, 0, 0, -32, 14);
                 muzzleGrad.addColorStop(0, '#ffffff');
-                muzzleGrad.addColorStop(0.4, currentTierIndex === 7 ? '#f1c40f' : '#00ffcc');
+                muzzleGrad.addColorStop(0.4, currentTierIndex === 7 ? '#ffea00' : '#00ffcc');
                 muzzleGrad.addColorStop(1, 'rgba(0,255,204,0)');
                 ctx.fillStyle = muzzleGrad;
                 ctx.beginPath();
@@ -841,25 +822,19 @@
 
         shoot() {
             let now = Date.now();
-            if (currentTierIndex === 7) { // Golden Humpback Whale Beam Weapon
-                if (now - lastShot > 50) {
-                    let beamWidth = 92;
-                    bullets.push(new Bullet(this.x, this.y - 30, '#f1c40f', 25, beamWidth / 2, 40));
-                    playHeavyLaserSound();
-                    lastShot = now;
-                }
-            } else if (now - lastShot > this.fireRate) {
+            let currentColor = currentTierIndex === 7 ? '#ffea00' : this.laserColor;
+
+            if (now - lastShot > this.fireRate) {
                 if (weaponLevel === 0) {
-                    bullets.push(new Bullet(this.x, this.y - 30, this.laserColor));
+                    bullets.push(new Bullet(this.x, this.y - 30, currentColor));
                     playLaserSound();
                 } else if (weaponLevel === 1) {
-                    bullets.push(new Bullet(this.x - 15, this.y - 25, this.laserColor));
-                    bullets.push(new Bullet(this.x + 15, this.y - 25, this.laserColor));
+                    bullets.push(new Bullet(this.x - 15, this.y - 25, currentColor));
+                    bullets.push(new Bullet(this.x + 15, this.y - 25, currentColor));
                     playLaserSound();
                 } else if (weaponLevel >= 2) {
-                    bullets.push(new Bullet(this.x, this.y - 35, '#ff00ff', 22, 6, 40));
-                    bullets.push(new Bullet(this.x - 22, this.y - 28, '#ff00ff', 22, 6, 40));
-                    bullets.push(new Bullet(this.x + 22, this.y - 28, '#ff00ff', 22, 6, 40));
+                    bullets.push(new Bullet(this.x - 22, this.y - 28, currentTierIndex === 7 ? '#ffea00' : '#ff00ff', 22, 6, 40));
+                    bullets.push(new Bullet(this.x + 22, this.y - 28, currentTierIndex === 7 ? '#ffea00' : '#ff00ff', 22, 6, 40));
                     playHeavyLaserSound();
                 }
                 lastShot = now;
@@ -871,9 +846,9 @@
     class BossETH {
         constructor() {
             this.x = canvas.width / 2;
-            this.y = 130;
-            this.radius = 125; // 5x Player size (~25px radius)
-            this.maxHp = 1100; // Reduziert um 50% von 2200
+            this.y = 168; // ca. 1 cm nach unten verschoben
+            this.radius = 62.5; // 50% kleiner als zuvor (von 125 auf 62.5)
+            this.maxHp = 1100;
             this.hp = this.maxHp;
             this.speed = 3.5;
             this.dir = 1;
@@ -889,12 +864,12 @@
             // Draw Tentacles (8 animated tentacles)
             for (let i = 0; i < 8; i++) {
                 let angle = (i / 8) * Math.PI * 2;
-                let wave = Math.sin(this.animTick * 2 + i) * 20;
+                let wave = Math.sin(this.animTick * 2 + i) * 10;
                 let tx = Math.cos(angle) * (this.radius * 0.8);
                 let ty = Math.sin(angle) * (this.radius * 0.8);
 
                 ctx.strokeStyle = '#627eea';
-                ctx.lineWidth = 12;
+                ctx.lineWidth = 6;
                 ctx.lineCap = 'round';
                 ctx.beginPath();
                 ctx.moveTo(tx, ty);
@@ -902,44 +877,44 @@
                 ctx.stroke();
 
                 ctx.strokeStyle = '#8c9eff';
-                ctx.lineWidth = 5;
+                ctx.lineWidth = 2.5;
                 ctx.stroke();
             }
 
             // Giant ETH Coin Body
-            let ethGrad = ctx.createRadialGradient(-20, -20, 10, 0, 0, this.radius);
+            let ethGrad = ctx.createRadialGradient(-10, -10, 5, 0, 0, this.radius);
             ethGrad.addColorStop(0, '#ffffff');
             ethGrad.addColorStop(0.3, '#8c9eff');
             ethGrad.addColorStop(0.7, '#627eea');
             ethGrad.addColorStop(1, '#232347');
 
             ctx.fillStyle = ethGrad;
-            ctx.shadowBlur = 35;
+            ctx.shadowBlur = 20;
             ctx.shadowColor = '#8c9eff';
             ctx.beginPath();
             ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
             ctx.fill();
 
             ctx.strokeStyle = '#a29bfe';
-            ctx.lineWidth = 6;
+            ctx.lineWidth = 3;
             ctx.stroke();
 
             // ETH Diamond Icon in center
             ctx.fillStyle = '#ffffff';
             ctx.beginPath();
-            ctx.moveTo(0, -60);
-            ctx.lineTo(40, 0);
-            ctx.lineTo(0, 20);
-            ctx.lineTo(-40, 0);
+            ctx.moveTo(0, -30);
+            ctx.lineTo(20, 0);
+            ctx.lineTo(0, 10);
+            ctx.lineTo(-20, 0);
             ctx.closePath();
             ctx.fill();
 
             ctx.fillStyle = '#c8d6e5';
             ctx.beginPath();
-            ctx.moveTo(0, 28);
-            ctx.lineTo(40, 6);
-            ctx.lineTo(0, 60);
-            ctx.lineTo(-40, 6);
+            ctx.moveTo(0, 14);
+            ctx.lineTo(20, 3);
+            ctx.lineTo(0, 30);
+            ctx.lineTo(-20, 3);
             ctx.closePath();
             ctx.fill();
 
@@ -1035,7 +1010,7 @@
             ctx.translate(this.x, this.y);
             ctx.rotate(this.rotation);
 
-            // Stacheln zeichnen
+            // Stacheln zeichnen (Rot belassen)
             ctx.fillStyle = '#ff2a2a';
             ctx.strokeStyle = '#ff7675';
             ctx.lineWidth = 2;
@@ -1053,26 +1028,15 @@
                 ctx.restore();
             }
 
-            // Minenkörper
-            let mineGrad = ctx.createRadialGradient(-4, -4, 2, 0, 0, this.radius);
-            mineGrad.addColorStop(0, '#555');
-            mineGrad.addColorStop(0.7, '#111');
-            mineGrad.addColorStop(1, '#000');
-
-            ctx.fillStyle = mineGrad;
+            // Minenkörper (Inneres Schwarz)
+            ctx.fillStyle = '#000000';
             ctx.shadowBlur = 15;
             ctx.shadowColor = '#ff0000';
             ctx.beginPath();
             ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
             ctx.fill();
 
-            // Roter Warnkern
-            ctx.fillStyle = '#ff0000';
-            ctx.beginPath();
-            ctx.arc(0, 0, 6, 0, Math.PI * 2);
-            ctx.fill();
-
-            // FUD Schriftzug in der Mitte
+            // FUD Schriftzug in der Mitte (gut lesbar)
             ctx.fillStyle = '#ffffff';
             ctx.font = '900 11px "Segoe UI", sans-serif';
             ctx.textAlign = 'center';
@@ -1112,9 +1076,10 @@
     }
 
     class HomingMissile {
-        constructor(x, y) {
+        constructor(x, y, type = 'ETH') {
             this.x = x; this.y = y; this.radius = 16; this.speed = 3.64;
             this.vx = 0; this.vy = this.speed; this.health = 1;
+            this.type = type; // 'ETH' oder 'USDT'
             this.lastShotTime = Date.now();
             this.fireShot();
         }
@@ -1128,20 +1093,25 @@
             ctx.save();
             ctx.translate(this.x, this.y);
 
-            ctx.fillStyle = '#00ffcc';
-            ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc';
+            let mainColor = this.type === 'USDT' ? '#26a17b' : '#00ffcc';
+            let gradStart = this.type === 'USDT' ? '#26a17b' : '#8c9eff';
+            let gradMid = this.type === 'USDT' ? '#00d294' : '#627eea';
+            let labelText = this.type === 'USDT' ? 'T' : 'ETH';
+
+            ctx.fillStyle = mainColor;
+            ctx.shadowBlur = 10; ctx.shadowColor = mainColor;
             ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(0, -22); ctx.lineTo(4, -12); ctx.fill();
 
             let ethGrad = ctx.createLinearGradient(-12, -12, 12, 12);
-            ethGrad.addColorStop(0, '#8c9eff'); ethGrad.addColorStop(0.5, '#627eea'); ethGrad.addColorStop(1, '#3c3c3d');
+            ethGrad.addColorStop(0, gradStart); ethGrad.addColorStop(0.5, gradMid); ethGrad.addColorStop(1, '#3c3c3d');
 
-            ctx.fillStyle = ethGrad; ctx.shadowBlur = 12; ctx.shadowColor = '#627eea';
+            ctx.fillStyle = ethGrad; ctx.shadowBlur = 12; ctx.shadowColor = gradMid;
             ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
 
             ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
 
             ctx.fillStyle = '#ffffff'; ctx.font = '900 12px "Segoe UI", sans-serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText('ETH', 0, 1);
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(labelText, 0, 1);
             ctx.restore();
         }
 
@@ -1307,15 +1277,6 @@
         }
     }
 
-    function triggerMegaFireworks() {
-        if (megaFireworkInterval) clearInterval(megaFireworkInterval);
-        megaFireworkInterval = setInterval(() => {
-            let x = Math.random() * canvas.width;
-            let y = Math.random() * canvas.height * 0.7;
-            createFirework(x, y, 25, 2.5);
-        }, 350);
-    }
-
     function spawnWave() {
         if (bossState !== 'INACTIVE') return;
 
@@ -1331,10 +1292,6 @@
             enemies.push(new Enemy(x, y, speed, type));
         }
 
-        // Stachlige Minen-Spawns
-        // Delfin: genau 1 Mine
-        // Hai: genau 2 Minen
-        // Wal: genau 2 Minen mit Zick-Zack-Bewegung
         if (currentTierIndex >= 4) {
             let mineCount = 1;
             if (currentTierIndex === 5 || currentTierIndex === 6) {
@@ -1347,6 +1304,13 @@
                 let isZigZag = (currentTierIndex === 6);
                 spikeMines.push(new SpikeMine(mx, my, speed * 2, isZigZag));
             }
+        }
+
+        if (currentTierIndex >= 5) {
+            let margin = 80;
+            let mx = margin + Math.random() * (canvas.width - margin * 2);
+            let my = -50;
+            homingMissiles.push(new HomingMissile(mx, my, 'USDT'));
         }
     }
 
@@ -1551,7 +1515,7 @@
                     let margin = 80;
                     let mx = margin + Math.random() * (canvas.width - margin * 2);
                     let my = -50;
-                    homingMissiles.push(new HomingMissile(mx, my));
+                    homingMissiles.push(new HomingMissile(mx, my, 'ETH'));
                     lastMissileSpawnTime = nowTime;
                 }
             }
@@ -1698,7 +1662,8 @@
 
                 if (destroyed) {
                     playBubblePopSound();
-                    for (let p = 0; p < 15; p++) particles.push(new Particle(m.x, m.y, '#627eea'));
+                    let particleColor = m.type === 'USDT' ? '#26a17b' : '#627eea';
+                    for (let p = 0; p < 15; p++) particles.push(new Particle(m.x, m.y, particleColor));
                     homingMissiles.splice(i, 1);
                     continue;
                 }
@@ -1793,10 +1758,6 @@
     function startGame() {
         initAudio();
         if (animationFrameId) cancelAnimationFrame(animationFrameId);
-        if (megaFireworkInterval) {
-            clearInterval(megaFireworkInterval);
-            megaFireworkInterval = null;
-        }
         if (creditsInterval) {
             clearInterval(creditsInterval);
             creditsInterval = null;
@@ -1848,7 +1809,6 @@
 
     function startCreditsRoll() {
         document.getElementById('credits-container').style.display = 'block';
-        triggerMegaFireworks();
 
         let creditsContent = document.getElementById('credits-content');
         creditsScrollY = 100;
