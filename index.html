@@ -4,6 +4,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <title>SPACE BITCOIN - Endboss Edition</title>
+
+    <!-- Web App / PWA Meta-Tags & Icons für Smartphone-Home-Bildschirm -->
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Space Bitcoin">
+    <meta name="theme-color" content="#f7931a">
+
+    <!-- Apple Touch Icon (iOS) -->
+    <link rel="apple-touch-icon" sizes="180x180" href="icon-512.png">
+
+    <!-- Web App Manifest (Android & Chrome) -->
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png">
+
     <style>
         body {
             margin: 0;
@@ -193,7 +207,7 @@
     </div>
 
     <div id="boss-hp-container">
-        <div id="boss-hp-title">⚠️️ ENDBOSS: ETH-MONSTER DEFI-OVERLORD ⚠️</div>
+        <div id="boss-hp-title">⚠️ ENDBOSS: ETH-MONSTER DEFI-OVERLORD ⚠️</div>
         <div id="boss-hp-bar-bg">
             <div id="boss-hp-bar-fill"></div>
         </div>
@@ -1067,7 +1081,7 @@
         constructor(x, y, type = 'ETH') {
             this.x = x; this.y = y; this.radius = 16; this.speed = 3.64;
             this.vx = 0; this.vy = this.speed; this.health = 1;
-            this.type = type; // 'ETH' oder 'USDT'
+            this.type = type;
             this.lastShotTime = Date.now();
             this.fireShot();
         }
@@ -1346,11 +1360,10 @@
         
         let isBossActive = (bossState === 'WARNING' || bossState === 'ACTIVE');
 
-        // Gemäss Anforderung: Beim Endboss bleiben BTC, Tier Art und HP sichtbar, Sats entfernt (oder wie gewünscht angepasst)
         document.getElementById('hud-tier').style.display = 'block';
         document.getElementById('hud-btc').style.display = 'block';
         document.getElementById('hud-mult').style.display = isBossActive ? 'none' : 'block';
-        document.getElementById('hud-score').style.display = isBossActive ? 'none' : 'block'; // Sats ausgeblendet beim Endboss
+        document.getElementById('hud-score').style.display = isBossActive ? 'none' : 'block';
         document.getElementById('hud-hp').style.display = 'block';
         document.getElementById('hud-wave').style.display = isBossActive ? 'none' : 'block';
 
