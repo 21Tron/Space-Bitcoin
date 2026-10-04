@@ -60,6 +60,33 @@
             text-shadow: 0 0 8px rgba(247, 147, 26, 0.6);
         }
 
+        /* Sprachauswahl oben rechts im Startbildschirm */
+        #lang-select-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 150;
+            display: flex;
+            gap: 8px;
+        }
+        .lang-btn {
+            background: rgba(8, 12, 28, 0.85);
+            border: 1px solid rgba(247, 147, 26, 0.6);
+            color: #fff;
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-weight: 700;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            backdrop-filter: blur(5px);
+        }
+        .lang-btn.active, .lang-btn:hover {
+            background: #f7931a;
+            color: #000;
+            box-shadow: 0 0 10px rgba(247, 147, 26, 0.8);
+        }
+
         /* Boss Health Bar HUD */
         #boss-hp-container {
             position: absolute;
@@ -214,24 +241,28 @@
     </div>
 
     <div id="startgame">
+        <div id="lang-select-container">
+            <button class="lang-btn active" id="btn-lang-de" onclick="setLanguage('de')">DE</button>
+            <button class="lang-btn" id="btn-lang-en" onclick="setLanguage('en')">EN</button>
+        </div>
         <div class="author-tag">Powered by TRON GAMES</div>
         <h1>SPACE BITCOIN</h1>
-        <p>Verteidige die Blockchain! Entwickle dich vom Shrimp bis zum mächtigen goldenen Buckelwal weiter und besiege den finalen ETH-Endboss!</p>
-        <button class="btn" onclick="startGame()">Spiel Starten</button>
+        <p id="start-desc">Verteidige die Blockchain! Entwickle dich vom Shrimp bis zum mächtigen goldenen Buckelwal weiter und besiege den finalen ETH-Endboss!</p>
+        <button class="btn" id="start-btn" onclick="startGame()">Spiel Starten</button>
     </div>
 
     <div id="gameover">
-        <h1>Die Blockchain ist abgestürzt!</h1>
+        <h1 id="gameover-title">Die Blockchain ist abgestürzt!</h1>
         <p id="gameover-text">Game Over</p>
-        <button class="btn" onclick="restartGame()">Nochmal versuchen</button>
+        <button class="btn" id="restart-btn" onclick="restartGame()">Nochmal versuchen</button>
     </div>
 
     <div id="win-screen">
-        <h1 style="color: #ffd166; font-size: 2.8rem; margin-bottom: 10px;">🎉 BLOCKCHAIN GERETTET! 🎉</h1>
+        <h1 id="win-title" style="color: #ffd166; font-size: 2.8rem; margin-bottom: 10px;">🎉 BLOCKCHAIN GERETTET! 🎉</h1>
         <p id="win-text" style="font-size: 1.5rem; font-weight: 800; color: #00ffcc; text-shadow: 0 0 20px rgba(0,255,204,0.8); margin-bottom: 20px;">
             Michael Saylor gratuliert dir, du hast die Bitcoin Blockchain gerettet!
         </p>
-        <button class="btn" onclick="restartGame()" style="margin-bottom: 20px;">Erneut Spielen</button>
+        <button class="btn" id="win-restart-btn" onclick="restartGame()" style="margin-bottom: 20px;">Erneut Spielen</button>
     </div>
 
     <div id="credits-container">
@@ -265,6 +296,68 @@
     <canvas id="gameCanvas"></canvas>
 
 <script>
+    // Sprachsystem
+    let currentLang = 'de';
+
+    const translations = {
+        de: {
+            startDesc: "Verteidige die Blockchain! Entwickle dich vom Shrimp bis zum mächtigen goldenen Buckelwal weiter und besiege den finalen ETH-Endboss!",
+            startBtn: "Spiel Starten",
+            gameOverTitle: "Die Blockchain ist abgestürzt!",
+            restartBtn: "Nochmal versuchen",
+            winTitle: "🎉 BLOCKCHAIN GERETTET! 🎉",
+            winText: "Michael Saylor gratuliert dir, du hast die Bitcoin Blockchain gerettet!",
+            winRestartBtn: "Erneut Spielen",
+            bossHpTitle: "⚠️ ENDBOSS: ETH-MONSTER DEFI-OVERLORD ⚠️",
+            tierLabel: "Tier",
+            yieldLabel: "Rendite",
+            waveLabel: "Welle",
+            warningBoss: "⚠️ WARNUNG: BOSS NAHT ⚠️",
+            cooldownLabel: "RUHEPHASE",
+            tiers: ["Shrimp", "Krabbe", "Oktopus", "Fisch", "Delfin", "Hai", "Wal", "Buckelwal"]
+        },
+        en: {
+            startDesc: "Defend the blockchain! Evolve from a Shrimp to a powerful golden Humpback Whale and defeat the final ETH End Boss!",
+            startBtn: "Start Game",
+            gameOverTitle: "The Blockchain Has Crashed!",
+            restartBtn: "Try Again",
+            winTitle: "🎉 BLOCKCHAIN SAVED! 🎉",
+            winText: "Michael Saylor congratulates you, you saved the Bitcoin Blockchain!",
+            winRestartBtn: "Play Again",
+            bossHpTitle: "⚠️ FINAL BOSS: ETH MONSTER DEFI OVERLORD ⚠️",
+            tierLabel: "Tier",
+            yieldLabel: "Yield",
+            waveLabel: "Wave",
+            warningBoss: "⚠️ WARNING: BOSS INCOMING ⚠️",
+            cooldownLabel: "COOLDOWN",
+            tiers: ["Shrimp", "Crab", "Octopus", "Fish", "Dolphin", "Shark", "Whale", "Humpback Whale"]
+        }
+    };
+
+    function setLanguage(lang) {
+        currentLang = lang;
+        document.querySelectorAll('.lang-btn').forEach(btn => btn.classList.remove('active'));
+        document.getElementById(`btn-lang-${lang}`).classList.add('active');
+
+        const t = translations[lang];
+        document.getElementById('start-desc').innerText = t.startDesc;
+        document.getElementById('start-btn').innerText = t.startBtn;
+        document.getElementById('gameover-title').innerText = t.gameOverTitle;
+        document.getElementById('restart-btn').innerText = t.restartBtn;
+        document.getElementById('win-title').innerText = t.winTitle;
+        document.getElementById('win-text').innerText = t.winText;
+        document.getElementById('win-restart-btn').innerText = t.winRestartBtn;
+        document.getElementById('boss-hp-title').innerText = t.bossHpTitle;
+
+        tiers.forEach((tier, idx) => {
+            tier.name = t.tiers[idx];
+        });
+
+        if (typeof updateHUD === 'function') {
+            updateHUD();
+        }
+    }
+
     const canvas = document.getElementById('gameCanvas');
     const ctx = canvas.getContext('2d');
 
@@ -1362,6 +1455,7 @@
         let btc = score / 100000000;
         let mult = getMultiplier();
         let tierObj = tiers[currentTierIndex];
+        let t = translations[currentLang];
 
         let isBossActive = (bossState === 'WARNING' || bossState === 'ACTIVE');
 
@@ -1372,12 +1466,12 @@
         document.getElementById('hud-hp').style.display = 'block';
         document.getElementById('hud-wave').style.display = isBossActive ? 'none' : 'block';
 
-        document.getElementById('hud-tier').innerText = `Tier: ${tierObj.icon} ${tierObj.name}`;
+        document.getElementById('hud-tier').innerText = `${t.tierLabel}: ${tierObj.icon} ${tierObj.name}`;
         document.getElementById('hud-btc').innerText = `BTC: ${btc.toFixed(8)}`;
-        document.getElementById('hud-mult').innerText = `Rendite: ${mult}x`;
+        document.getElementById('hud-mult').innerText = `${t.yieldLabel}: ${mult}x`;
         document.getElementById('hud-score').innerText = `Sats: ${score.toLocaleString()}`;
         document.getElementById('hud-hp').innerText = `HP: ${'₿'.repeat(Math.max(0, hp))}`;
-        document.getElementById('hud-wave').innerText = `Welle: ${wave}`;
+        document.getElementById('hud-wave').innerText = `${t.waveLabel}: ${wave}`;
     }
 
     window.addEventListener('keydown', e => {
@@ -1451,6 +1545,7 @@
 
             if (bossState === 'WARNING') {
                 let elapsed = (Date.now() - bossWarningTimer) / 1000;
+                let t = translations[currentLang];
 
                 ctx.save();
                 ctx.fillStyle = '#e74c3c';
@@ -1458,11 +1553,11 @@
                 ctx.shadowColor = '#e74c3c';
                 ctx.font = '900 42px "Courier New", monospace';
                 ctx.textAlign = 'center';
-                ctx.fillText("⚠️ WARNING: BOSS INCOMING ⚠️", canvas.width / 2, canvas.height / 2 - 20);
+                ctx.fillText(t.warningBoss, canvas.width / 2, canvas.height / 2 - 20);
 
                 ctx.fillStyle = '#f1c40f';
                 ctx.font = '700 24px "Segoe UI", sans-serif';
-                ctx.fillText(`RUHEPHASE: ${Math.ceil(5 - elapsed)}s`, canvas.width / 2, canvas.height / 2 + 30);
+                ctx.fillText(`${t.cooldownLabel}: ${Math.ceil(5 - elapsed)}s`, canvas.width / 2, canvas.height / 2 + 30);
                 ctx.restore();
 
                 if (elapsed >= 5) {
@@ -1799,7 +1894,10 @@
             animationFrameId = null;
         }
         let btc = score / 100000000;
-        document.getElementById('gameover-text').innerText = `Game Over\nWelle: ${wave} | Sats: ${score.toLocaleString()} (${btc.toFixed(8)} BTC)\nFinales Tier: ${tiers[currentTierIndex].icon} ${tiers[currentTierIndex].name}`;
+        let t = translations[currentLang];
+        let waveLabel = t.waveLabel;
+        let tierObj = tiers[currentTierIndex];
+        document.getElementById('gameover-text').innerText = `Game Over\n${waveLabel}: ${wave} | Sats: ${score.toLocaleString()} (${btc.toFixed(8)} BTC)\nFinal Tier: ${tierObj.icon} ${tierObj.name}`;
         document.getElementById('gameover').style.display = 'flex';
     }
 
@@ -1831,6 +1929,9 @@
     function restartGame() {
         startGame();
     }
+
+    // Standardmässig Sprache anwenden
+    setLanguage('de');
 
     animationFrameId = requestAnimationFrame(gameLoop);
 </script>
