@@ -228,7 +228,6 @@
         <div class="hud-group" id="hud-tier">Tier: 🦐 Shrimp</div>
         <div class="hud-group" id="hud-btc">BTC: 0.00000000</div>
         <div class="hud-group" id="hud-mult" style="color:#00ffcc;">Rendite: 1x</div>
-        <div class="hud-group" id="hud-score">Sats: 0</div>
         <div class="hud-group" id="hud-hp">HP: ₿₿₿</div>
         <div class="hud-group" id="hud-wave">Welle: 1</div>
     </div>
@@ -545,6 +544,10 @@
     let weaponLevel = 0;
     let bonusBtcMultiplier = 3;
 
+    // Tracker für die genau 2 Zusatzleben
+    let spawnedFirstExtraLife = false;
+    let spawnedSecondExtraLife = false;
+
     let reached5000Btc = false;
     let max_bitcoins = null;
     let lastMissileSpawnTime = 0;
@@ -591,6 +594,7 @@
             this.fireRate = 160;
             this.animTick = 0;
             this.hitRadius = 50;
+            this.goldShimmerTimer = 0;
         }
 
         isTouched(x, y) {
@@ -607,6 +611,19 @@
             }
 
             ctx.translate(this.x, this.y);
+
+            // Goldener Schimmer-Effekt beim Einsammeln des B
+            if (this.goldShimmerTimer > 0) {
+                this.goldShimmerTimer--;
+                ctx.save();
+                ctx.shadowBlur = 25;
+                ctx.shadowColor = '#ffd700';
+                ctx.fillStyle = 'rgba(255, 215, 0, 0.35)';
+                ctx.beginPath();
+                ctx.arc(0, 0, 45, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
 
             ctx.save();
             ctx.translate(0, 25);
@@ -1255,6 +1272,43 @@
         update() { this.y += this.speed; }
     }
 
+    // Goldene Bitcoin "B" Klasse (Gibt Zusatzleben & Schimmer)
+    class GoldenBItem {
+        constructor(x, y) {
+            this.x = x;
+            this.y = y;
+            this.radius = 22;
+            this.speed = 1.5;
+            this.animTick = 0;
+        }
+        draw() {
+            this.animTick += 0.05;
+            ctx.save();
+            ctx.translate(this.x, this.y);
+
+            let glow = Math.sin(this.animTick * 4) * 10 + 20;
+            ctx.shadowBlur = glow;
+            ctx.shadowColor = '#ffd700';
+
+            // Gezeichnetes Bitcoin B
+            ctx.fillStyle = '#ffd700';
+            ctx.font = '900 44px "Arial Black", "Segoe UI", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('₿', 0, 0);
+
+            // Randglanz um das B
+            ctx.strokeStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.lineWidth = 2;
+            ctx.strokeText('₿', 0, 0);
+
+            ctx.restore();
+        }
+        update() {
+            this.y += this.speed;
+        }
+    }
+
     class GoldRainCoin {
         constructor() {
             this.x = Math.random() * canvas.width;
@@ -1345,6 +1399,7 @@
     let homingMissiles = [];
     let enemyProjectiles = [];
     let powerUpCoins = [];
+    let goldenBItems = [];
     let floatingTexts = [];
     let particles = [];
     let stars = [];
@@ -1379,6 +1434,13 @@
 
     function spawnWave() {
         if (bossState !== 'INACTIVE') return;
+
+        // 1. ZUSATZLEBEN: Zufällig spawnen, sobald Tier 'Hai' (Tier-Index >= 5) erreicht ist
+        if (!spawnedFirstExtraLife && currentTierIndex >= 5 && Math.random() < 0.4) {
+            spawnedFirstExtraLife = true;
+            let gx = Math.random() * (canvas.width - 120) + 60;
+            goldenBItems.push(new GoldenBItem(gx, -60));
+        }
 
         let effectiveWave = Math.min(wave, 60);
         let count = 10;
@@ -1423,6 +1485,7 @@
         homingMissiles = [];
         enemyProjectiles = [];
         powerUpCoins = [];
+        goldenBItems = [];
 
         weaponLevel = 2;
         playBossWarningSound();
@@ -1443,12 +1506,40 @@
             currentTierIndex = newIndex;
             playCashSound();
             triggerLevelUpFireworks();
+
+            // 2. ZUSATZLEBEN: Erscheint garantiert, wenn der Wal (Tier-Index >= 6) erreicht wird
+            if (!spawnedSecondExtraLife && currentTierIndex >= 6) {
+                spawnedSecondExtraLife = true;
+                let gx = Math.random() * (canvas.width - 120) + 60;
+                goldenBItems.push(new GoldenBItem(gx, -60));
+            }
         }
 
         if (btcTotal >= 5000 && !reached5000Btc) {
             reached5000Btc = true;
             triggerBossTransition();
         }
+    }
+
+    // Trefferbehandlung auf den Spieler
+    function handlePlayerHit() {
+        hp--;
+        shakeTimer = 35;
+        playCrashSound();
+
+        // Wenn der Spieler Buckelwal ist (Tier index 7), behält er das Laser-Level
+        if (currentTierIndex !== 7) {
+            if (bossState === 'INACTIVE') {
+                weaponLevel = 0;
+                bonusBtcMultiplier = 3;
+            }
+        }
+
+        if (hp <= 0) {
+            endGame();
+            return true;
+        }
+        return false;
     }
 
     function updateHUD() {
@@ -1462,14 +1553,12 @@
         document.getElementById('hud-tier').style.display = isBossActive ? 'none' : 'block';
         document.getElementById('hud-btc').style.display = isBossActive ? 'none' : 'block';
         document.getElementById('hud-mult').style.display = isBossActive ? 'none' : 'block';
-        document.getElementById('hud-score').style.display = isBossActive ? 'none' : 'block';
         document.getElementById('hud-hp').style.display = 'block';
         document.getElementById('hud-wave').style.display = isBossActive ? 'none' : 'block';
 
         document.getElementById('hud-tier').innerText = `${t.tierLabel}: ${tierObj.icon} ${tierObj.name}`;
         document.getElementById('hud-btc').innerText = `BTC: ${btc.toFixed(8)}`;
         document.getElementById('hud-mult').innerText = `${t.yieldLabel}: ${mult}x`;
-        document.getElementById('hud-score').innerText = `Sats: ${score.toLocaleString()}`;
         document.getElementById('hud-hp').innerText = `HP: ${'₿'.repeat(Math.max(0, hp))}`;
         document.getElementById('hud-wave').innerText = `${t.waveLabel}: ${wave}`;
     }
@@ -1634,19 +1723,11 @@
                 if (bossState !== 'DEFEATED') {
                     let dist = Math.hypot(player.x - sm.x, player.y - sm.y);
                     if (dist < (player.width / 2) + sm.radius) {
-                        hp--;
-                        shakeTimer = 35;
-                        playCrashSound();
-                        weaponLevel = 0;
-                        bonusBtcMultiplier = 3;
                         for (let p = 0; p < 20; p++) {
                             particles.push(new Particle(sm.x, sm.y, '#ff0000', 1.5));
                         }
                         spikeMines.splice(i, 1);
-                        if (hp <= 0) {
-                            endGame();
-                            return;
-                        }
+                        if (handlePlayerHit()) return;
                         continue;
                     }
                 }
@@ -1664,18 +1745,8 @@
                 if (bossState !== 'DEFEATED') {
                     let dist = Math.hypot(player.x - ep.x, player.y - ep.y);
                     if (dist < (player.width / 2) + ep.radius) {
-                        hp--;
-                        shakeTimer = 30;
-                        playCrashSound();
-                        if (bossState === 'INACTIVE') {
-                            weaponLevel = 0;
-                            bonusBtcMultiplier = 3;
-                        }
                         enemyProjectiles.splice(i, 1);
-                        if (hp <= 0) {
-                            endGame();
-                            return;
-                        }
+                        if (handlePlayerHit()) return;
                         continue;
                     }
                 }
@@ -1713,6 +1784,31 @@
                 }
             }
 
+            // Logik für das goldene Bitcoin-B Item
+            for (let i = goldenBItems.length - 1; i >= 0; i--) {
+                let gb = goldenBItems[i];
+                gb.update();
+                gb.draw();
+
+                let dist = Math.hypot(player.x - gb.x, player.y - gb.y);
+                if (dist < (player.width / 2) + gb.radius) {
+                    playGlitterSparkleSound();
+                    hp++; // Zusatzleben erhalten
+                    player.goldShimmerTimer = 60; // Kurzer goldener Schimmer
+                    floatingTexts.push(new FloatingText(player.x, player.y - 40, "+1 HP ₿"));
+
+                    for (let p = 0; p < 30; p++) {
+                        particles.push(new Particle(gb.x, gb.y, '#ffd700', 1.8));
+                    }
+                    goldenBItems.splice(i, 1);
+                    continue;
+                }
+
+                if (gb.y > canvas.height + 40) {
+                    goldenBItems.splice(i, 1);
+                }
+            }
+
             for (let i = floatingTexts.length - 1; i >= 0; i--) {
                 floatingTexts[i].update();
                 floatingTexts[i].draw();
@@ -1727,18 +1823,8 @@
                 if (bossState !== 'DEFEATED') {
                     let dist = Math.hypot(player.x - m.x, player.y - m.y);
                     if (dist < (player.width / 2) + m.radius) {
-                        hp--;
-                        shakeTimer = 35;
-                        playCrashSound();
-                        if (bossState === 'INACTIVE') {
-                            weaponLevel = 0;
-                            bonusBtcMultiplier = 3;
-                        }
                         homingMissiles.splice(i, 1);
-                        if (hp <= 0) {
-                            endGame();
-                            return;
-                        }
+                        if (handlePlayerHit()) return;
                         continue;
                     }
                 }
@@ -1771,16 +1857,8 @@
                 if (bossState !== 'DEFEATED') {
                     let dist = Math.hypot(player.x - e.x, player.y - e.y);
                     if (dist < (player.width / 2) + e.radius) {
-                        hp--;
-                        shakeTimer = 35;
-                        playCrashSound();
-                        weaponLevel = 0;
-                        bonusBtcMultiplier = 3;
                         enemies.splice(i, 1);
-                        if (hp <= 0) {
-                            endGame();
-                            return;
-                        }
+                        if (handlePlayerHit()) return;
                         continue;
                     }
                 }
@@ -1863,6 +1941,8 @@
         currentTierIndex = 0;
         weaponLevel = 0;
         bonusBtcMultiplier = 3;
+        spawnedFirstExtraLife = false;
+        spawnedSecondExtraLife = false;
         reached5000Btc = false;
         max_bitcoins = null;
         bossState = 'INACTIVE';
@@ -1874,6 +1954,7 @@
         homingMissiles = [];
         enemyProjectiles = [];
         powerUpCoins = [];
+        goldenBItems = [];
         floatingTexts = [];
         bullets = [];
         particles = [];
@@ -1895,7 +1976,7 @@
         let t = translations[currentLang];
         let waveLabel = t.waveLabel;
         let tierObj = tiers[currentTierIndex];
-        document.getElementById('gameover-text').innerText = `Game Over\n${waveLabel}: ${wave} | Sats: ${score.toLocaleString()} (${btc.toFixed(8)} BTC)\nFinal Tier: ${tierObj.icon} ${tierObj.name}`;
+        document.getElementById('gameover-text').innerText = `Game Over\n${waveLabel}: ${wave} | BTC: ${btc.toFixed(8)}\nFinal Tier: ${tierObj.icon} ${tierObj.name}`;
         document.getElementById('gameover').style.display = 'flex';
     }
 
