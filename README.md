@@ -57,7 +57,7 @@ Im Spiel findest du dafür auch den Button **„Teilen oder App installieren"** 
 Das Spiel besteht aus einer einzigen HTML-Datei, es wird nichts installiert:
 
 1. Repository herunterladen oder klonen
-2. Die Datei `index.html` (bzw. `sb_V3.html`) im Browser öffnen
+2. Die Datei `index.html` im Browser öffnen
 3. Spielen!
 
 Für die Installation als Web-App müssen `manifest.json` und die Icons (`icon-192.png`, `icon-512.png`) im selben Ordner liegen.
@@ -110,7 +110,7 @@ The title screen also has a **"Share or Install App"** button that copies the li
 The game is a single HTML file, nothing to install:
 
 1. Download or clone the repository
-2. Open `index.html` (or `sb_V3.html`) in your browser
+2. Open `index.html` in your browser
 3. Play!
 
 To install it as a web app, `manifest.json` and the icons (`icon-192.png`, `icon-512.png`) must sit in the same folder.
