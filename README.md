@@ -19,7 +19,7 @@ Du startest als kleiner **Shrimp** und kämpfst dich als Bitcoin-Raumschiff durc
 
 ### Features
 
-- 🎮 **Arcade-Action** im Neo-Geo-Stil mit Neon-Optik und Retro-Sounds
+- 🎮 **Arcade-Action** im Retro-Stil mit Neon-Optik und Retro-Sounds
 - 🦐➡🐋 **8 Tier-Stufen:** Shrimp → Krabbe → Oktopus → Fisch → Delfin → Hai → Wal → Buckelwal
 - 💥 **Waffen-Upgrades** durch Power-up-Münzen:
   1. Dual-Kanone
@@ -72,7 +72,7 @@ You start as a tiny **Shrimp** and fight through waves of enemies as a Bitcoin s
 
 ### Features
 
-- 🎮 **Arcade action** in Neo-Geo style with neon visuals and retro sounds
+- 🎮 **Arcade action** in retro style with neon visuals and retro sounds
 - 🦐➡🐋 **8 tiers:** Shrimp → Crab → Octopus → Fish → Dolphin → Shark → Whale → Humpback Whale
 - 💥 **Weapon upgrades** from power-up coins:
   1. Dual cannon
