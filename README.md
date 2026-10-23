@@ -125,7 +125,7 @@ To install it as a web app, `manifest.json` and the icons (`icon-192.png`, `icon
 
 ## 📜 Version
 
-**v1.5**
+**v1.6**
 
 ---
 
