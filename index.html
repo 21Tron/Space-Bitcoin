@@ -451,7 +451,7 @@
 
     <div id="startgame">
         <button id="share-btn" onclick="copyShareLink()">🔗 Teilen oder App installieren</button>
-        <div id="version-tag">v1.5</div>
+        <div id="version-tag">v1.6</div>
         <div id="share-bubble"></div>
         <div id="tron-grid"><div class="plane"></div></div>
         <div id="lang-select-container">
@@ -780,6 +780,11 @@
     let lastShot = 0;
     let shakeTimer = 0;
     let currentTierIndex = 0;
+    // Laserfarbe: Buckelwal = goldgelb, ab Neon-Stufe = pink, sonst türkis
+    function laserColor() {
+        if (currentTierIndex === 7) return '#ffc800';
+        return (weaponLevel >= 4) ? '#ff007f' : '#00ffcc';
+    }
     let weaponLevel = 0; // 0 = Mono, 1 = Dual, 2 = Helfer einfach, 3 = Helfer Dual, 4 = Player Neon-Pink, 5 = Helfer Neon-Pink
     let lightningCoinCount = 0; // Zählt eingesammelte Blitz-Münzen
     let currentBtcBonus = 5; // Startet bei 5 BTC und verdoppelt sich bei jeder weiteren Bonus-Münze
@@ -838,246 +843,357 @@
         ctx.restore();
     }
 
-    function drawRealisticShrimp(animTick) {
-        let flex = Math.sin(animTick * 1.5) * 3;
-        ctx.strokeStyle = 'rgba(255, 120, 100, 0.8)';
-        ctx.lineWidth = 1.2;
-        ctx.shadowBlur = 8;
-        ctx.shadowColor = '#ff6b6b';
-        for (let side of [-1, 1]) {
-            ctx.beginPath();
-            ctx.moveTo(side * 3, -18);
-            ctx.bezierCurveTo(side * 20, -32 + flex, side * 35, -45, side * 28, -55 + flex);
-            ctx.stroke();
-        }
-        ctx.shadowBlur = 0;
-
-        ctx.fillStyle = 'rgba(255, 150, 120, 0.6)';
-        for (let i = 0; i < 4; i++) {
-            let legWave = Math.sin(animTick * 2 + i) * 4;
-            ctx.beginPath();
-            ctx.ellipse(-8, 5 + i * 5, 2, 7 + legWave, Math.PI / 4, 0, Math.PI * 2);
-            ctx.ellipse(8, 5 + i * 5, 2, 7 - legWave, -Math.PI / 4, 0, Math.PI * 2);
-            ctx.fill();
-        }
-
-        for (let i = 4; i >= 0; i--) {
-            let yOffset = -12 + i * 7 + (i === 4 ? flex * 0.5 : 0);
-            let radiusX = 11 - i * 1.2;
-            let radiusY = 6;
-            let segGrad = ctx.createRadialGradient(-3, yOffset - 2, 1, 0, yOffset, radiusX);
-            segGrad.addColorStop(0, '#ffa8a8');
-            segGrad.addColorStop(0.5, '#ee5253');
-            segGrad.addColorStop(1, '#871010');
-
-            ctx.fillStyle = segGrad;
-            ctx.beginPath();
-            ctx.ellipse(0, yOffset, radiusX, radiusY, 0, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(255, 255, 255, 0.3)';
-            ctx.lineWidth = 1;
-            ctx.stroke();
-        }
-
-        ctx.fillStyle = '#ff6b6b';
+    // ===== Cyber-Raumschiffe: Tier-Designs (Neon, Panzerung, Triebwerke) =====
+    function shipGrad(c1, c2, w = 22) {
+        let g = ctx.createLinearGradient(-w, 0, w, 0);
+        g.addColorStop(0, c2); g.addColorStop(0.5, c1); g.addColorStop(1, c2);
+        return g;
+    }
+    // Symmetrisches Polygon: 'half' = rechte Seite von der Nase zum Heck
+    function symPoly(half, fill, stroke, glow = 10, lw = 1.5) {
         ctx.beginPath();
-        ctx.moveTo(0, 22 + flex);
-        ctx.lineTo(-14, 34 + flex); ctx.lineTo(-4, 28 + flex);
-        ctx.lineTo(0, 36 + flex); ctx.lineTo(4, 28 + flex);
-        ctx.lineTo(14, 34 + flex); ctx.closePath(); ctx.fill();
-
-        let headGrad = ctx.createRadialGradient(-3, -16, 2, 0, -14, 14);
-        headGrad.addColorStop(0, '#ffbe76'); headGrad.addColorStop(0.6, '#ff6b6b'); headGrad.addColorStop(1, '#ab1313');
-        ctx.fillStyle = headGrad; ctx.beginPath(); ctx.ellipse(0, -14, 11, 13, 0, 0, Math.PI * 2); ctx.fill();
-
-        ctx.fillStyle = '#ff7675'; ctx.beginPath(); ctx.moveTo(0, -32); ctx.lineTo(-3, -20); ctx.lineTo(3, -20); ctx.closePath(); ctx.fill();
-        ctx.fillStyle = '#111'; ctx.beginPath(); ctx.arc(-7, -20, 3.5, 0, Math.PI * 2); ctx.arc(7, -20, 3.5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-8, -21, 1.2, 0, Math.PI * 2); ctx.arc(6, -21, 1.2, 0, Math.PI * 2); ctx.fill();
+        half.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+        for (let i = half.length - 1; i >= 0; i--) ctx.lineTo(-half[i][0], half[i][1]);
+        ctx.closePath();
+        ctx.fillStyle = fill; ctx.fill();
+        if (stroke) {
+            ctx.shadowBlur = glow; ctx.shadowColor = stroke;
+            ctx.strokeStyle = stroke; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.stroke();
+            ctx.shadowBlur = 0;
+        }
+    }
+    function neonLine(pts, c, lw = 1.5) {
+        ctx.save();
+        ctx.shadowBlur = 8; ctx.shadowColor = c;
+        ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round';
+        ctx.beginPath();
+        pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1]));
+        ctx.stroke();
+        ctx.restore();
+    }
+    function engineFlame(x, y, len, w, c, t) {
+        let l = len * (0.8 + 0.3 * Math.sin(t * 9 + x));
+        let g = ctx.createLinearGradient(0, y, 0, y + l);
+        g.addColorStop(0, '#ffffff'); g.addColorStop(0.3, c); g.addColorStop(1, 'rgba(0,0,0,0)');
+        ctx.save();
+        ctx.shadowBlur = 14; ctx.shadowColor = c; ctx.fillStyle = g;
+        ctx.beginPath(); ctx.moveTo(x - w, y); ctx.lineTo(x + w, y); ctx.lineTo(x, y + l); ctx.closePath(); ctx.fill();
+        ctx.restore();
+    }
+    function glowDot(x, y, r, c) {
+        ctx.save();
+        ctx.shadowBlur = 12; ctx.shadowColor = c; ctx.fillStyle = c;
+        ctx.beginPath(); ctx.arc(x, y, r, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
+    }
+    function cockpit(x, y, rx, ry, c) {
+        let g = ctx.createRadialGradient(x - rx * 0.3, y - ry * 0.3, 1, x, y, Math.max(rx, ry));
+        g.addColorStop(0, '#ffffff'); g.addColorStop(0.35, c); g.addColorStop(1, '#050510');
+        ctx.save();
+        ctx.shadowBlur = 10; ctx.shadowColor = c; ctx.fillStyle = g;
+        ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill();
+        ctx.restore();
     }
 
-    function drawRealisticCrab(animTick) {
-        let legMove = Math.sin(animTick * 1.8) * 4;
-        ctx.strokeStyle = '#c0392b'; ctx.lineWidth = 3.5; ctx.lineCap = 'round';
-        for (let side of [-1, 1]) {
-            for (let i = 0; i < 3; i++) {
-                ctx.beginPath();
-                ctx.moveTo(side * 14, -2 + i * 6);
-                ctx.quadraticCurveTo(side * (26 + legMove), -8 + i * 8, side * (32 + legMove), 6 + i * 8);
-                ctx.stroke();
-            }
-        }
-
-        for (let side of [-1, 1]) {
-            let pincerAngle = side * (0.2 + Math.sin(animTick) * 0.1);
-            ctx.save(); ctx.translate(side * 18, -14); ctx.rotate(pincerAngle);
-            let clawGrad = ctx.createLinearGradient(-10, -10, 10, 10);
-            clawGrad.addColorStop(0, '#ff7675'); clawGrad.addColorStop(1, '#d63031');
-            ctx.fillStyle = clawGrad; ctx.beginPath(); ctx.ellipse(0, -8, 9, 12, side * -0.3, 0, Math.PI * 2); ctx.fill();
-            ctx.fillStyle = '#2d3436'; ctx.beginPath(); ctx.arc(side * -2, -22, 3, 0, Math.PI * 2); ctx.fill();
+    // ===== Japanische Arcade-Optik (Darius/Gradius-Stil): Cel-Shading, dicke Konturen, Panzerplatten =====
+    const OL = '#0b0d18';
+    // Form mit 3-Ton-Schattierung: Basis, Schatten (unten rechts), Glanzkante (oben links) + dunkle Kontur
+    function celShape(pathFn, base, shade, light, mirror = true, lw = 2.4) {
+        for (let sx of (mirror ? [1, -1] : [1])) {
+            const mk = (dx, dy) => { ctx.save(); ctx.translate(dx, dy); ctx.scale(sx, 1); ctx.beginPath(); pathFn(); ctx.restore(); };
+            ctx.save();
+            mk(0, 0); ctx.clip();
+            ctx.fillStyle = shade; ctx.fillRect(-150, -150, 300, 300);
+            mk(-3, -3); ctx.fillStyle = base; ctx.fill();
+            mk(2, 2); ctx.strokeStyle = light; ctx.lineWidth = 2; ctx.lineJoin = 'round'; ctx.stroke();
             ctx.restore();
+            mk(0, 0); ctx.strokeStyle = OL; ctx.lineWidth = lw; ctx.lineJoin = 'round'; ctx.stroke();
         }
-
-        let shellGrad = ctx.createRadialGradient(-4, -4, 3, 0, 0, 22);
-        shellGrad.addColorStop(0, '#ff7675'); shellGrad.addColorStop(0.5, '#d63031');
-        shellGrad.addColorStop(0.9, '#781010'); shellGrad.addColorStop(1, '#3a0202');
-        ctx.fillStyle = shellGrad; ctx.beginPath(); ctx.ellipse(0, 0, 22, 16, 0, 0, Math.PI * 2); ctx.fill();
-
-        ctx.strokeStyle = 'rgba(255,255,255,0.2)'; ctx.lineWidth = 1.5; ctx.beginPath(); ctx.arc(0, 2, 14, Math.PI * 0.2, Math.PI * 0.8); ctx.stroke();
-        ctx.fillStyle = '#d63031'; ctx.fillRect(-7, -18, 3, 6); ctx.fillRect(4, -18, 3, 6);
-        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(-5.5, -19, 2.8, 0, Math.PI * 2); ctx.arc(5.5, -19, 2.8, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-6.5, -20, 1, 0, Math.PI * 2); ctx.arc(4.5, -20, 1, 0, Math.PI * 2); ctx.fill();
+    }
+    function celEllipse(x, y, rx, ry, base, shade, light) {
+        celShape(() => ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2), base, shade, light, false, 2);
+    }
+    // Glänzende Linse (Augen, Cockpit, Gems)
+    function lens(x, y, rx, ry, c) {
+        ctx.fillStyle = OL; ctx.beginPath(); ctx.ellipse(x, y, rx + 1.6, ry + 1.6, 0, 0, Math.PI * 2); ctx.fill();
+        let g = ctx.createRadialGradient(x - rx * 0.3, y - ry * 0.4, 0.5, x, y, Math.max(rx, ry));
+        g.addColorStop(0, '#ffffff'); g.addColorStop(0.3, c); g.addColorStop(1, '#0a0a22');
+        ctx.save(); ctx.shadowBlur = 8; ctx.shadowColor = c; ctx.fillStyle = g;
+        ctx.beginPath(); ctx.ellipse(x, y, rx, ry, 0, 0, Math.PI * 2); ctx.fill(); ctx.restore();
+        ctx.fillStyle = 'rgba(255,255,255,0.85)';
+        ctx.beginPath(); ctx.ellipse(x - rx * 0.35, y - ry * 0.45, rx * 0.28, ry * 0.2, -0.5, 0, Math.PI * 2); ctx.fill();
+    }
+    function brow(x, y, r, s) { // böse Augenbraue
+        ctx.fillStyle = OL; ctx.beginPath();
+        ctx.moveTo(x + s * r * 1.7, y - r * 1.8); ctx.lineTo(x - s * r * 1.8, y - r * 1.8); ctx.lineTo(x - s * r * 1.8, y + r * 0.1); ctx.closePath(); ctx.fill();
+    }
+    function nozzle(x, y, w, t, flame) {
+        engineFlame(x, y + 3, 18, w * 0.8, flame, t);
+        ctx.beginPath(); ctx.moveTo(x - w, y - 4); ctx.lineTo(x + w, y - 4); ctx.lineTo(x + w * 0.7, y + 4); ctx.lineTo(x - w * 0.7, y + 4); ctx.closePath();
+        let g = ctx.createLinearGradient(x - w, 0, x + w, 0); g.addColorStop(0, '#2a3040'); g.addColorStop(0.35, '#9aa4b8'); g.addColorStop(1, '#1a1e2a');
+        ctx.fillStyle = g; ctx.fill(); ctx.strokeStyle = OL; ctx.lineWidth = 1.6; ctx.stroke();
+        ctx.fillStyle = flame; ctx.fillRect(x - w * 0.5, y + 2, w, 1.8);
+    }
+    function panel(pts, a = 0.5) {
+        ctx.save(); ctx.strokeStyle = 'rgba(8,10,20,' + a + ')'; ctx.lineWidth = 1; ctx.lineCap = 'round'; ctx.beginPath();
+        pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke(); ctx.restore();
+    }
+    function rivets(list, c = '#e4e9f5') { ctx.fillStyle = c; for (let [x, y] of list) { ctx.beginPath(); ctx.arc(x, y, 0.95, 0, Math.PI * 2); ctx.fill(); } }
+    // Stahl-Kanone mit leuchtender Mündung
+    function cannon(x, y, len, w, c) {
+        celShape(() => ctx.rect(x - w, y - len, w * 2, len), '#7a8499', '#2e3547', '#d3dbee', false, 1.8);
+        celEllipse(x, y, w * 1.5, w * 1.5, '#5a6378', '#262c3c', '#b5bed3');
+        glowDot(x, y - len, w * 0.8, c);
+    }
+    // Rückenpanzer: Stahl-Chevrons mit farbigem Streifen
+    function spineArmor(y0, n, w, color, step) {
+        for (let i = 0; i < n; i++) {
+            let y = y0 + i * step, wi = w * (1 - i / (n * 1.7));
+            celShape(() => { ctx.moveTo(-wi, y + 3); ctx.lineTo(0, y - 3); ctx.lineTo(wi, y + 3); ctx.lineTo(wi, y + 6.5); ctx.lineTo(0, y + 0.5); ctx.lineTo(-wi, y + 6.5); ctx.closePath(); }, '#8d97ad', '#3a4256', '#e2e8f6', false, 1.6);
+            ctx.strokeStyle = color; ctx.lineWidth = 1.2; ctx.beginPath(); ctx.moveTo(-wi * 0.6, y + 3.6); ctx.lineTo(0, y - 0.4); ctx.lineTo(wi * 0.6, y + 3.6); ctx.stroke();
+        }
+    }
+    function tube(x0, y0, cx, cy, x1, y1, w0, w1, color, suckers) {
+        for (let k = 0; k <= 16; k++) {
+            let u = k / 16, v = 1 - u;
+            let x = v * v * x0 + 2 * v * u * cx + u * u * x1, y = v * v * y0 + 2 * v * u * cy + u * u * y1;
+            ctx.fillStyle = color; ctx.beginPath(); ctx.arc(x, y, w0 + (w1 - w0) * u, 0, Math.PI * 2); ctx.fill();
+            if (suckers && k % 3 === 1) { ctx.fillStyle = '#ffd1f4'; ctx.beginPath(); ctx.arc(x, y, (w0 + (w1 - w0) * u) * 0.38, 0, Math.PI * 2); ctx.fill(); }
+        }
+    }
+    function limb(pts, w, base, hi) { // Gelenk-Bein mit Kontur
+        for (let [lw, c] of [[w + 2.4, OL], [w, base], [w * 0.28, hi]]) {
+            ctx.strokeStyle = c; ctx.lineWidth = lw; ctx.lineCap = 'round'; ctx.lineJoin = 'round'; ctx.beginPath();
+            pts.forEach((p, i) => i ? ctx.lineTo(p[0], p[1]) : ctx.moveTo(p[0], p[1])); ctx.stroke();
+        }
     }
 
+    // Ethereum-Logo exakt nach Vorlage: 6 Facetten, flach, auf Münzblau (#627eea); Maße für Radius 13
+    function drawEthLogo() {
+        const f = (pts, c) => { ctx.fillStyle = c; ctx.beginPath(); pts.forEach((q, i) => i ? ctx.lineTo(q[0], q[1]) : ctx.moveTo(q[0], q[1])); ctx.closePath(); ctx.fill(); };
+        f([[0, -9.7], [-6.05, 0.15], [0, -2.5]], '#ffffff');       // oben links
+        f([[0, -9.7], [6.1, 0.15], [0, -2.5]], '#c1ccf6');         // oben rechts
+        f([[-6.05, 0.15], [0, -2.5], [0, 3.7]], '#c1ccf6');        // Mitte links
+        f([[6.1, 0.15], [0, -2.5], [0, 3.7]], '#8499ee');          // Mitte rechts
+        f([[-6.05, 1.4], [0, 4.85], [0, 9.75]], '#ffffff');        // unten links
+        f([[6.1, 1.4], [0, 4.85], [0, 9.75]], '#c1ccf6');          // unten rechts
+    }
+
+    // 0 – Garnele: roter Abfangjäger mit Segment-Panzer, Blasterspitze und Fühler-Peitschen
+    function drawRealisticShrimp(t) {
+        let f = Math.sin(t * 1.5);
+        for (let s of [-1, 1]) for (let [w, c] of [[3.6, OL], [1.8, '#ff9d6b']]) {
+            ctx.strokeStyle = c; ctx.lineWidth = w; ctx.lineCap = 'round'; ctx.beginPath(); ctx.moveTo(s * 4, -34);
+            ctx.bezierCurveTo(s * 18, -44 + f * 3, s * 34, -46, s * 38, -62 + f * 5); ctx.stroke();
+        }
+        engineFlame(0, 48, 18, 3.6, '#ff7a1a', t);
+        for (let a of [-0.7, -0.35, 0, 0.35, 0.7]) {
+            ctx.save(); ctx.translate(0, 30); ctx.rotate(a + f * 0.07);
+            celShape(() => ctx.ellipse(0, 9, 4.6, 10, 0, 0, Math.PI * 2), '#ff6a3d', '#a8280f', '#ffd1a0', false, 2); ctx.restore();
+        }
+        for (let i = 0; i < 5; i++) for (let s of [-1, 1]) { let y = -8 + i * 7, w = Math.sin(t * 3 + i) * 3; limb([[s * 8, y], [s * (17 + w), y + 5]], 2.6, '#ff8a55', '#ffd1a0'); }
+        for (let i = 4; i >= 0; i--) {
+            let y = -6 + i * 8, rx = 11 - i * 1.1;
+            celEllipse(0, y, rx, 5.6, '#f2552f', '#a8280f', '#ffb089');
+            ctx.fillStyle = i % 2 ? '#ffd23f' : '#fff1b8'; ctx.fillRect(-rx * 0.45, y - 0.8, rx * 0.9, 1.6);
+        }
+        celEllipse(0, -18, 11, 17, '#f2552f', '#a8280f', '#ffb089');
+        celShape(() => { ctx.moveTo(0, -48); ctx.lineTo(-3.8, -30); ctx.lineTo(3.8, -30); ctx.closePath(); }, '#ffd23f', '#c98a00', '#fff3b0', false, 2);
+        panel([[-9, -6], [0, -2], [9, -6]]); panel([[-8, -26], [0, -22], [8, -26]]);
+        for (let s of [-1, 1]) { cannon(s * 10, -6, 10, 1.7, '#ffd23f'); lens(s * 8, -29, 3.1, 3.1, '#ff3b3b'); brow(s * 8, -29, 3.1, s); }
+        lens(0, -14, 3.6, 7, '#33e0ff');
+        rivets([[-7, -14], [7, -14], [-6, 0], [6, 0]]);
+        glowDot(0, -48.5, 2, '#33e0ff');
+    }
+
+    // 1 – Krabbe: gepanzerter Kampfläufer mit Reaktor und zwei Plasma-Scheren
+    function drawRealisticCrab(t) {
+        let c = Math.sin(t * 1.8), pinch = 0.25 + Math.sin(t * 2) * 0.12;
+        for (let s of [-1, 1]) for (let i = 0; i < 4; i++) {
+            let y = -4 + i * 7, sw = Math.sin(t * 2 + i * 1.3) * 3;
+            let k = [[s * 16, y], [s * (32 + c * 2), y - 6], [s * (40 + sw), y + 8 + i]];
+            limb(k, 4, '#d64a2b', '#ff9a6a'); ctx.fillStyle = '#ffd23f'; ctx.beginPath(); ctx.arc(k[1][0], k[1][1], 1.8, 0, Math.PI * 2); ctx.fill();
+        }
+        nozzle(-7, 24, 3.4, t, '#ff7a1a'); nozzle(7, 24, 3.4, t, '#ff7a1a');
+        celShape(() => { ctx.moveTo(0, -20); ctx.lineTo(9, -21); ctx.lineTo(13, -28); ctx.lineTo(16, -17); ctx.lineTo(25, -12); ctx.lineTo(27, -2); ctx.lineTo(24, 10); ctx.lineTo(14, 20); ctx.lineTo(0, 22); }, '#e0432b', '#8f1d12', '#ff9a7a', true, 2.6);
+        spineArmor(-14, 3, 14, '#ffd23f', 7);
+        celEllipse(0, 6, 8, 8, '#3a4258', '#1a1f2c', '#8a95b0'); glowDot(0, 6, 4 + Math.sin(t * 3), '#ffb347');
+        panel([[-16, -8], [-8, -4]]); panel([[16, -8], [8, -4]]); panel([[-18, 12], [-9, 10]]); panel([[18, 12], [9, 10]]);
+        rivets([[-14, 4], [14, 4], [-10, 16], [10, 16]]);
+        for (let s of [-1, 1]) {
+            limb([[s * 6, -14], [s * 8, -22]], 2.2, '#c93a22', '#ff9a6a'); lens(s * 8, -24, 3, 3, '#ffea00'); brow(s * 8, -24, 3, s);
+            limb([[s * 17, -6], [s * 26, -20]], 8, '#c93a22', '#ff9a6a');
+            for (let k of [-1, 1]) {
+                ctx.save(); ctx.translate(s * 26, -20); ctx.rotate(k * pinch);
+                celShape(() => { ctx.moveTo(0, 2); ctx.quadraticCurveTo(k * 12, -12, k * 1.5, -30); ctx.quadraticCurveTo(k * 3.5, -14, 0, -6); ctx.closePath(); }, '#ff5a3c', '#a8280f', '#ffd0b0', false, 2.2);
+                ctx.restore();
+            }
+            glowDot(s * 26, -26, 2.4, '#ffea00');
+        }
+    }
+
+    // 2 – Oktopus: Original-Form (violetter Kopf, goldene Augen), gepanzert wie die anderen Tier-Schiffe
     function drawRealisticOctopus(animTick) {
         let wave = Math.sin(animTick * 1.5);
         for (let i = 0; i < 8; i++) {
             let angle = (i - 3.5) * 0.32;
             let length = 34 + Math.sin(animTick + i) * 6;
-            ctx.save(); ctx.rotate(angle);
-            ctx.strokeStyle = '#6c5ce7'; ctx.lineWidth = 5.5; ctx.lineCap = 'round';
-            ctx.beginPath(); ctx.moveTo(0, 8); ctx.quadraticCurveTo(wave * 12, length * 0.5, wave * -8, length); ctx.stroke();
-            ctx.strokeStyle = '#a29bfe'; ctx.lineWidth = 1.8; ctx.stroke();
+            ctx.save(); ctx.rotate(angle); ctx.lineCap = 'round';
+            for (let [w, c] of [[8.4, OL], [5.8, '#6c5ce7'], [1.8, '#b9b2ff']]) {
+                ctx.strokeStyle = c; ctx.lineWidth = w;
+                ctx.beginPath(); ctx.moveTo(0, 8); ctx.quadraticCurveTo(wave * 12, length * 0.5, wave * -8, length); ctx.stroke();
+            }
+            // Gelenkringe und Stahl-Spitze mit Plasma
+            for (let k of [0.35, 0.65]) {
+                let u = k, x = 2 * (1 - u) * u * wave * 12 + u * u * wave * -8, y = 8 + 2 * (1 - u) * u * (length * 0.5 - 8) + u * u * (length - 8);
+                ctx.fillStyle = '#ffd23f'; ctx.strokeStyle = OL; ctx.lineWidth = 1; ctx.beginPath(); ctx.arc(x, y, 2.1, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+            }
+            celEllipse(wave * -8, length, 3, 3, '#8d97ad', '#3a4256', '#e2e8f6');
+            glowDot(wave * -8, length + 0.5, 1.5, '#ff6bd6');
             ctx.restore();
         }
 
-        let mantleGrad = ctx.createRadialGradient(-5, -10, 3, 0, -8, 20);
-        mantleGrad.addColorStop(0, '#a29bfe'); mantleGrad.addColorStop(0.5, '#6c5ce7');
-        mantleGrad.addColorStop(0.9, '#3c2a93'); mantleGrad.addColorStop(1, '#1e1050');
-        ctx.fillStyle = mantleGrad; ctx.beginPath(); ctx.ellipse(0, -8, 20, 22, 0, 0, Math.PI * 2); ctx.fill();
-
+        // Kopf: Original-Farben mit Cel-Schatten + Panzerhaube
+        celEllipse(0, -8, 20, 22, '#6c5ce7', '#3c2a93', '#c5bfff');
+        celShape(() => { ctx.moveTo(0, -30); ctx.lineTo(5, -24); ctx.lineTo(4, -12); ctx.lineTo(0, -8); ctx.lineTo(-4, -12); ctx.lineTo(-5, -24); ctx.closePath(); }, '#45367f', '#1d1445', '#9a8be0', false, 2);
+        ctx.fillStyle = '#ffd23f'; ctx.fillRect(-1.1, -27, 2.2, 14);
         ctx.fillStyle = 'rgba(162, 155, 254, 0.6)'; ctx.beginPath();
-        ctx.arc(-8, -14, 2.5, 0, Math.PI * 2); ctx.arc(6, -18, 3, 0, Math.PI * 2);
-        ctx.arc(0, -22, 2, 0, Math.PI * 2); ctx.arc(-10, -4, 2, 0, Math.PI * 2); ctx.fill();
+        ctx.arc(-11, -16, 2.2, 0, Math.PI * 2); ctx.arc(11, -18, 2.6, 0, Math.PI * 2); ctx.arc(-13, -6, 1.8, 0, Math.PI * 2); ctx.fill();
+        panel([[-16, -20], [-7, -17]], 0.55); panel([[16, -20], [7, -17]], 0.55);
+        panel([[-17, -8], [-9, -9]], 0.45); panel([[17, -8], [9, -9]], 0.45);
+        rivets([[-12, -24], [12, -24], [-8, 8], [8, 8]]);
+        spineArmor(-33, 2, 10, '#ffd23f', 5);
 
-        ctx.fillStyle = '#fdcb6e'; ctx.beginPath(); ctx.arc(-9, -2, 4.5, 0, Math.PI * 2); ctx.arc(9, -2, 4.5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#000'; ctx.fillRect(-12, -3, 6, 2); ctx.fillRect(6, -3, 6, 2);
-    }
-
-    function drawRealisticFish(animTick) {
-        let tailWag = Math.sin(animTick * 2.2) * 8;
-        ctx.fillStyle = '#10ac84'; ctx.beginPath(); ctx.moveTo(0, 12);
-        ctx.quadraticCurveTo(tailWag * 0.8, 24, tailWag, 36); ctx.quadraticCurveTo(0, 28, -tailWag, 36);
-        ctx.quadraticCurveTo(-tailWag * 0.8, 24, 0, 12); ctx.fill();
-
-        ctx.fillStyle = 'rgba(29, 209, 161, 0.7)'; ctx.beginPath();
-        ctx.ellipse(-14, 2, 4, 12, Math.PI / 3, 0, Math.PI * 2);
-        ctx.ellipse(14, 2, 4, 12, -Math.PI / 3, 0, Math.PI * 2); ctx.fill();
-
-        let bodyGrad = ctx.createRadialGradient(-4, -6, 2, 0, -2, 18);
-        bodyGrad.addColorStop(0, '#55efc4'); bodyGrad.addColorStop(0.5, '#10ac84');
-        bodyGrad.addColorStop(0.9, '#016148'); bodyGrad.addColorStop(1, '#002b20');
-        ctx.fillStyle = bodyGrad; ctx.beginPath(); ctx.ellipse(0, -2, 15, 24, 0, 0, Math.PI * 2); ctx.fill();
-
-        ctx.fillStyle = 'rgba(255, 255, 255, 0.75)'; ctx.beginPath();
-        ctx.ellipse(0, -6, 14.5, 4, 0, 0, Math.PI * 2); ctx.ellipse(0, 4, 12, 3, 0, 0, Math.PI * 2); ctx.fill();
-
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(0, -16, 4.5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(0, -17, 2.5, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-1, -18, 1, 0, Math.PI * 2); ctx.fill();
-    }
-
-    function drawRealisticDolphin(animTick) {
-        let tailFluke = Math.sin(animTick * 1.6) * 6;
-        ctx.fillStyle = '#2e86de'; ctx.beginPath(); ctx.moveTo(0, 20);
-        ctx.quadraticCurveTo(-18, 28 + tailFluke, -26, 32 + tailFluke); ctx.lineTo(0, 26 + tailFluke);
-        ctx.lineTo(26, 32 + tailFluke); ctx.quadraticCurveTo(18, 28 + tailFluke, 0, 20); ctx.fill();
-
-        let bodyGrad = ctx.createLinearGradient(-15, 0, 15, 0);
-        bodyGrad.addColorStop(0, '#2e86de'); bodyGrad.addColorStop(0.3, '#54a0ff');
-        bodyGrad.addColorStop(0.7, '#833471'); bodyGrad.addColorStop(1, '#1b4f72');
-        ctx.fillStyle = bodyGrad; ctx.beginPath(); ctx.ellipse(0, -4, 14, 28, 0, 0, Math.PI * 2); ctx.fill();
-
-        let beakGrad = ctx.createLinearGradient(0, -32, 0, -20);
-        beakGrad.addColorStop(0, '#54a0ff'); beakGrad.addColorStop(1, '#2e86de');
-        ctx.fillStyle = beakGrad; ctx.beginPath(); ctx.ellipse(0, -26, 5, 9, 0, 0, Math.PI * 2); ctx.fill();
-
-        ctx.fillStyle = '#1b4f72'; ctx.beginPath(); ctx.moveTo(0, -8); ctx.quadraticCurveTo(-12, 4, -18, 8);
-        ctx.quadraticCurveTo(-6, 2, 0, 2); ctx.fill();
-
-        ctx.fillStyle = '#0a2334'; ctx.beginPath(); ctx.ellipse(0, -20, 2, 1, 0, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(-5, -20, 2, 0, Math.PI * 2); ctx.arc(5, -20, 2, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#fff'; ctx.beginPath(); ctx.arc(-5.5, -20.5, 0.8, 0, Math.PI * 2); ctx.arc(4.5, -20.5, 0.8, 0, Math.PI * 2); ctx.fill();
-    }
-
-    function drawRealisticShark(animTick) {
-        let tailWag = Math.sin(animTick * 2) * 7;
-        ctx.fillStyle = '#485460'; ctx.beginPath(); ctx.moveTo(0, 16);
-        ctx.lineTo(-20 + tailWag, 42); ctx.lineTo(-4 + tailWag, 28);
-        ctx.lineTo(0, 24); ctx.lineTo(10 + tailWag, 36); ctx.closePath(); ctx.fill();
-
-        let sharkGrad = ctx.createLinearGradient(-18, 0, 18, 0);
-        sharkGrad.addColorStop(0, '#1e272e'); sharkGrad.addColorStop(0.35, '#485460');
-        sharkGrad.addColorStop(0.5, '#d2dae2'); sharkGrad.addColorStop(0.65, '#485460');
-        sharkGrad.addColorStop(1, '#1e272e');
-        ctx.fillStyle = sharkGrad; ctx.beginPath(); ctx.ellipse(0, -4, 17, 32, 0, 0, Math.PI * 2); ctx.fill();
-
-        ctx.fillStyle = '#1e272e'; ctx.beginPath(); ctx.moveTo(0, -10); ctx.lineTo(-24, 6);
-        ctx.lineTo(0, 0); ctx.lineTo(24, 6); ctx.closePath(); ctx.fill();
-
-        ctx.strokeStyle = '#000'; ctx.lineWidth = 1.2;
-        for (let i = 0; i < 4; i++) {
-            ctx.beginPath(); ctx.moveTo(-11, -8 + i * 3); ctx.lineTo(-8, -6 + i * 3);
-            ctx.moveTo(11, -8 + i * 3); ctx.lineTo(8, -6 + i * 3); ctx.stroke();
+        for (let s of [-1, 1]) {
+            lens(s * 9, -2, 4.6, 4.8, '#fdcb6e');
+            ctx.fillStyle = '#000'; ctx.fillRect(s * 9 - 3.2, -3, 6.4, 2);
+            brow(s * 9, -2, 4.6, s);
         }
-
-        ctx.fillStyle = '#000'; ctx.beginPath(); ctx.arc(-7, -22, 2.8, 0, Math.PI * 2); ctx.arc(7, -22, 2.8, 0, Math.PI * 2); ctx.fill();
-        ctx.fillStyle = '#ff3838'; ctx.beginPath(); ctx.arc(-7, -22, 1, 0, Math.PI * 2); ctx.arc(7, -22, 1, 0, Math.PI * 2); ctx.fill();
+        for (let s of [-1, 1]) cannon(s * 23, 2, 14, 2.2, '#ff6bd6');
+        nozzle(0, 13, 3.4, animTick, '#c77dff');
     }
 
-    function drawRealisticWhale(animTick) {
-        let flukeMotion = Math.sin(animTick * 1.2) * 5;
-        ctx.fillStyle = '#2c3e50'; ctx.beginPath(); ctx.moveTo(0, 26);
-        ctx.quadraticCurveTo(-28, 40 + flukeMotion, -38, 44 + flukeMotion); ctx.lineTo(0, 34 + flukeMotion);
-        ctx.lineTo(38, 44 + flukeMotion); ctx.quadraticCurveTo(28, 40 + flukeMotion, 0, 26); ctx.fill();
-
-        let whaleGrad = ctx.createRadialGradient(-6, -10, 4, 0, 0, 26);
-        whaleGrad.addColorStop(0, '#3498db'); whaleGrad.addColorStop(0.5, '#2980b9');
-        whaleGrad.addColorStop(0.85, '#1b4f72'); whaleGrad.addColorStop(1, '#0b1a26');
-        ctx.fillStyle = whaleGrad; ctx.beginPath(); ctx.ellipse(0, -6, 23, 38, 0, 0, Math.PI * 2); ctx.fill();
-
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)'; ctx.lineWidth = 1.5;
-        for (let offset of [-10, -5, 0, 5, 10]) {
-            ctx.beginPath(); ctx.moveTo(offset * 0.6, -36); ctx.lineTo(offset, -6); ctx.stroke();
+    // 3 – Fisch: Piranha-Jäger mit Zahnmaul, Rückenflosse, gegabelter Schwanzflosse
+    function drawRealisticFish(t) {
+        let tw = Math.sin(t * 2.2);
+        engineFlame(0, 48, 18, 3.8, '#00ffcc', t);
+        ctx.save(); ctx.translate(0, 22); ctx.rotate(tw * 0.12);
+        celShape(() => { ctx.moveTo(0, 0); ctx.quadraticCurveTo(14, 8, 18, 26); ctx.quadraticCurveTo(7, 18, 0, 22); ctx.quadraticCurveTo(-7, 18, -18, 26); ctx.quadraticCurveTo(-14, 8, 0, 0); }, '#ffb020', '#d6600a', '#fff0a0', false, 2.4);
+        panel([[0, 3], [-9, 20]]); panel([[0, 3], [9, 20]]); panel([[0, 3], [0, 16]]);
+        ctx.restore();
+        for (let s of [-1, 1]) {
+            ctx.save(); ctx.translate(s * 10, -6); ctx.rotate(s * (0.45 + tw * 0.1));
+            celShape(() => { ctx.moveTo(0, 0); ctx.quadraticCurveTo(s * 22, -4, s * 30, 14); ctx.quadraticCurveTo(s * 14, 16, 0, 8); ctx.closePath(); }, '#ffb020', '#d6600a', '#fff0a0', false, 2.2);
+            panel([[0, 3], [s * 20, 3]]); panel([[0, 5], [s * 22, 9]]);
+            ctx.restore();
         }
-
-        ctx.fillStyle = '#1b4f72';
-        ctx.beginPath(); ctx.ellipse(-24, -4, 5, 16, Math.PI / 4, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(24, -4, 5, 16, -Math.PI / 4, 0, Math.PI * 2); ctx.fill();
-
-        ctx.fillStyle = 'rgba(0, 255, 204, 0.4)'; ctx.shadowBlur = 10; ctx.shadowColor = '#00ffcc';
-        ctx.beginPath(); ctx.arc(0, -38, 6 + Math.sin(animTick * 3) * 2, 0, Math.PI * 2); ctx.fill();
-        ctx.shadowBlur = 0;
-    }
-
-    function drawRealisticHumpbackWhale(animTick) {
-        let glow = Math.sin(animTick * 2) * 8 + 15;
-        let flukeMotion = Math.sin(animTick * 1.1) * 6;
-
-        ctx.shadowBlur = glow; ctx.shadowColor = '#f1c40f';
-        ctx.fillStyle = '#f39c12';
-        ctx.beginPath(); ctx.ellipse(-32, -2, 7, 26, Math.PI / 3, 0, Math.PI * 2); ctx.fill();
-        ctx.beginPath(); ctx.ellipse(32, -2, 7, 26, -Math.PI / 3, 0, Math.PI * 2); ctx.fill();
-
-        ctx.fillStyle = '#d35400'; ctx.beginPath(); ctx.moveTo(0, 28);
-        ctx.quadraticCurveTo(-34, 44 + flukeMotion, -46, 50 + flukeMotion); ctx.lineTo(0, 38 + flukeMotion);
-        ctx.lineTo(46, 50 + flukeMotion); ctx.quadraticCurveTo(34, 44 + flukeMotion, 0, 28); ctx.fill();
-
-        let kingGrad = ctx.createRadialGradient(-8, -12, 4, 0, 0, 30);
-        kingGrad.addColorStop(0, '#ffffff'); kingGrad.addColorStop(0.3, '#f1c40f');
-        kingGrad.addColorStop(0.7, '#e67e22'); kingGrad.addColorStop(0.95, '#d35400'); kingGrad.addColorStop(1, '#6e2c00');
-        ctx.fillStyle = kingGrad; ctx.beginPath(); ctx.ellipse(0, -6, 26, 42, 0, 0, Math.PI * 2); ctx.fill();
-
+        celShape(() => { ctx.moveTo(0, -42); ctx.bezierCurveTo(10, -38, 16, -14, 13, 6); ctx.bezierCurveTo(11, 18, 5, 24, 0, 26); }, '#1fc9a0', '#0a6a58', '#8ff5da', true, 2.6);
+        celShape(() => { ctx.moveTo(0, -36); ctx.lineTo(4, -20); ctx.lineTo(3, 10); ctx.lineTo(0, 22); ctx.lineTo(-3, 10); ctx.lineTo(-4, -20); ctx.closePath(); }, '#ffd23f', '#c98a00', '#fff3b0', false, 2);
+        ctx.strokeStyle = 'rgba(8,60,50,0.55)'; ctx.lineWidth = 1;
+        for (let r = 0; r < 5; r++) for (let c = -1; c <= 1; c += 2) { ctx.beginPath(); ctx.arc(c * 8, -6 + r * 5, 4, 0.15 * Math.PI, 0.85 * Math.PI); ctx.stroke(); }
+        for (let s of [-1, 1]) { panel([[s * 9, -18], [s * 12, -10], [s * 9, -4]], 0.7); cannon(s * 14, 10, 12, 2.4, '#00ffe0'); }
+        // Zahnmaul
+        celShape(() => ctx.ellipse(0, -39, 5.5, 3.2, 0, 0, Math.PI * 2), '#c4122f', '#6a0a1a', '#ff7a8a', false, 1.8);
         ctx.fillStyle = '#fff';
-        for (let i = 0; i < 7; i++) {
-            let angle = (i - 3) * 0.25;
-            ctx.beginPath(); ctx.arc(Math.sin(angle) * 16, -34 + Math.cos(angle) * 6, 2, 0, Math.PI * 2); ctx.fill();
-        }
+        for (let i = -2; i <= 2; i++) { ctx.beginPath(); ctx.moveTo(i * 2 - 1, -41); ctx.lineTo(i * 2 + 1, -41); ctx.lineTo(i * 2, -38.3); ctx.closePath(); ctx.fill(); }
+        for (let s of [-1, 1]) { lens(s * 9, -27, 3.4, 3.4, '#ffe066'); brow(s * 9, -27, 3.4, s); }
+    }
 
-        ctx.fillStyle = '#f1c40f'; ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5;
-        ctx.beginPath(); ctx.moveTo(-14, -44); ctx.lineTo(-7, -38); ctx.lineTo(0, -52);
-        ctx.lineTo(7, -38); ctx.lineTo(14, -44); ctx.lineTo(10, -32); ctx.lineTo(-10, -32); ctx.closePath();
-        ctx.fill(); ctx.stroke();
-        ctx.shadowBlur = 0;
+    // 4 – Delfin: blauer Nadel-Jäger mit Schnabelkanone, weißem Bauchstreifen und Sichelflossen
+    function drawRealisticDolphin(t) {
+        let f = Math.sin(t * 1.6);
+        engineFlame(-5, 46, 18, 3.4, '#4db8ff', t); engineFlame(5, 46, 18, 3.4, '#4db8ff', t);
+        ctx.save(); ctx.translate(0, 31); ctx.rotate(f * 0.06);
+        celShape(() => { ctx.moveTo(0, 0); ctx.quadraticCurveTo(-14, 2, -30, 14 + f * 2); ctx.quadraticCurveTo(-14, 8, 0, 11); ctx.quadraticCurveTo(14, 8, 30, 14 + f * 2); ctx.quadraticCurveTo(14, 2, 0, 0); }, '#2f7fe0', '#154aa0', '#a8dcff', false, 2.4);
+        ctx.restore();
+        for (let s of [-1, 1]) {
+            celShape(() => { ctx.moveTo(s * 10, -6); ctx.quadraticCurveTo(s * 26, -2, s * 32, 12); ctx.quadraticCurveTo(s * 18, 6, s * 9, 6); ctx.closePath(); }, '#2f7fe0', '#154aa0', '#a8dcff', false, 2.2);
+            ctx.fillStyle = '#ff8a2a'; ctx.beginPath(); ctx.moveTo(s * 18, 0); ctx.lineTo(s * 25, 2); ctx.lineTo(s * 28, 8); ctx.lineTo(s * 22, 5); ctx.closePath(); ctx.fill();
+        }
+        celShape(() => { ctx.moveTo(0, -48); ctx.lineTo(2.5, -44); ctx.lineTo(3.5, -36); ctx.quadraticCurveTo(10, -33, 12, -22); ctx.bezierCurveTo(14, -4, 12, 18, 5, 34); ctx.lineTo(0, 36); }, '#3f93f0', '#1c56b8', '#b5e2ff', true, 2.6);
+        celShape(() => { ctx.moveTo(0, -30); ctx.lineTo(4.5, -14); ctx.lineTo(4, 14); ctx.lineTo(0, 30); ctx.lineTo(-4, 14); ctx.lineTo(-4.5, -14); ctx.closePath(); }, '#f2f8ff', '#a9c4e6', '#ffffff', false, 2);
+        spineArmor(-22, 4, 9, '#ff8a2a', 8);
+        panel([[-12, -10], [-6, -8]]); panel([[12, -10], [6, -8]]); rivets([[-9, 6], [9, 6], [-8, 18], [8, 18]]);
+        for (let s of [-1, 1]) { cannon(s * 16, 8, 14, 2.6, '#7df9ff'); lens(s * 9.5, -26, 2.6, 2.6, '#7df9ff'); brow(s * 9.5, -26, 2.6, s); }
+        glowDot(0, -48.5, 2.2, '#7df9ff');
+    }
+
+    // 5 – Hai: Stahl-Raubschiff mit offenem Maul, roter Kampfbemalung und Seitenkanonen
+    function drawRealisticShark(t) {
+        let tw = Math.sin(t * 2);
+        engineFlame(0, 56, 18, 4, '#ff2a2a', t);
+        ctx.save(); ctx.translate(0, 32); ctx.rotate(tw * 0.1);
+        celShape(() => { ctx.moveTo(0, 0); ctx.quadraticCurveTo(10, 8, 20, 36); ctx.quadraticCurveTo(6, 26, 0, 24); ctx.quadraticCurveTo(-6, 26, -12, 32); ctx.quadraticCurveTo(-10, 8, 0, 0); }, '#4a5568', '#1f2633', '#9aa6bc', false, 2.4);
+        ctx.restore();
+        for (let s of [-1, 1]) {
+            celShape(() => { ctx.moveTo(s * 9, -12); ctx.quadraticCurveTo(s * 30, 0, s * 40, 22); ctx.quadraticCurveTo(s * 22, 16, s * 10, 8); ctx.closePath(); }, '#4a5568', '#1f2633', '#9aa6bc', false, 2.4);
+            ctx.strokeStyle = '#e0243a'; ctx.lineWidth = 2; ctx.beginPath(); ctx.moveTo(s * 12, -9); ctx.quadraticCurveTo(s * 30, 1, s * 38, 20); ctx.stroke();
+            celShape(() => { ctx.moveTo(s * 6, 12); ctx.lineTo(s * 16, 24); ctx.lineTo(s * 6, 24); ctx.closePath(); }, '#3a4458', '#1a202c', '#8793aa', false, 2);
+        }
+        celShape(() => { ctx.moveTo(0, -48); ctx.bezierCurveTo(6, -44, 12, -28, 13, -8); ctx.bezierCurveTo(14, 10, 8, 24, 3, 34); ctx.lineTo(0, 34); }, '#8f9bb0', '#4a5568', '#e3eaf5', true, 2.6);
+        celShape(() => { ctx.moveTo(0, -34); ctx.lineTo(4, -20); ctx.lineTo(3, 0); ctx.lineTo(0, 6); ctx.lineTo(-3, 0); ctx.lineTo(-4, -20); ctx.closePath(); }, '#e0243a', '#8a0f20', '#ff8a96', false, 2);
+        celShape(() => { ctx.moveTo(0, -8); ctx.lineTo(5.5, 12); ctx.lineTo(3.5, 28); ctx.lineTo(0, 30); ctx.lineTo(-3.5, 28); ctx.lineTo(-5.5, 12); ctx.closePath(); }, '#3a4458', '#1a202c', '#8793aa', false, 2.2);
+        for (let s of [-1, 1]) for (let i = 0; i < 4; i++) panel([[s * 8.5, -14 + i * 3.4], [s * 12.5, -12 + i * 3.4]], 0.7);
+        // Maul
+        celShape(() => ctx.ellipse(0, -46, 6, 3.4, 0, 0, Math.PI * 2), '#c4122f', '#5a0818', '#ff7a8a', false, 1.8);
+        ctx.fillStyle = '#fff'; ctx.strokeStyle = OL; ctx.lineWidth = 0.8;
+        for (let i = 0; i < 4; i++) for (let s of [-1, 1]) {
+            let x = s * (1.5 + i * 2.1), y = -48 + i * 4.2;
+            ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + s * 4.4, y + 2); ctx.lineTo(x, y + 4.8); ctx.closePath(); ctx.fill(); ctx.stroke();
+        }
+        for (let s of [-1, 1]) { cannon(s * 28, 18, 14, 2.6, '#ff3b3b'); lens(s * 8.5, -30, 2.8, 2.8, '#ff2a2a'); brow(s * 8.5, -30, 2.8, s); }
+    }
+
+    // 6 – Wal: blauer Schlachtkreuzer mit weißem Bauchpanzer, Geschütztürmen und Blasloch-Luke
+    function drawRealisticWhale(t) {
+        let fl = Math.sin(t * 1.2) * 3;
+        engineFlame(0, 52, 22, 5.5, '#4dd9ff', t);
+        ctx.save(); ctx.translate(0, 34);
+        celShape(() => { ctx.moveTo(0, 4); ctx.quadraticCurveTo(-18, 0, -40, 16 + fl); ctx.quadraticCurveTo(-18, 12, -3, 12); ctx.lineTo(0, 8); ctx.lineTo(3, 12); ctx.quadraticCurveTo(18, 12, 40, 16 + fl); ctx.quadraticCurveTo(18, 0, 0, 4); }, '#2b5a9c', '#16336a', '#8cb8ee', false, 2.6);
+        ctx.restore();
+        for (let s of [-1, 1]) celShape(() => { ctx.moveTo(s * 18, -10); ctx.quadraticCurveTo(s * 40, 0, s * 44, 24); ctx.quadraticCurveTo(s * 28, 10, s * 17, 6); ctx.closePath(); }, '#2b5a9c', '#16336a', '#8cb8ee', false, 2.4);
+        celShape(() => { ctx.moveTo(0, -46); ctx.bezierCurveTo(16, -44, 26, -24, 25, -4); ctx.bezierCurveTo(24, 16, 10, 28, 4, 36); ctx.lineTo(0, 36); }, '#3a78c8', '#1b3f86', '#9cc6f5', true, 2.8);
+        celShape(() => { ctx.moveTo(0, -30); ctx.lineTo(9, -22); ctx.lineTo(10, 8); ctx.lineTo(5, 26); ctx.lineTo(0, 28); ctx.lineTo(-5, 26); ctx.lineTo(-10, 8); ctx.lineTo(-9, -22); ctx.closePath(); }, '#e6eefc', '#a9bddc', '#ffffff', false, 2.2);
+        spineArmor(-22, 6, 15, '#2b8aff', 8);
+        for (let s of [-1, 1]) for (let i = 0; i < 4; i++) panel([[s * (13 + i * 2), -20 + i], [s * (14 + i * 2.2), 10 + i * 2]], 0.4);
+        for (let s of [-1, 1]) {
+            celEllipse(s * 20, -8, 6.5, 6.5, '#5a6378', '#262c3c', '#b5bed3');
+            cannon(s * 18, -8, 18, 1.7, '#7df9ff'); cannon(s * 22, -8, 18, 1.7, '#7df9ff');
+            lens(s * 21, -28, 2.8, 2.8, '#7df9ff'); brow(s * 21, -28, 2.8, s);
+        }
+        celEllipse(0, -38, 5, 3.4, '#2a3248', '#12162a', '#7684a8'); glowDot(0, -38, 1.8 + Math.sin(t * 3) * 0.5, '#4dd9ff');
+        rivets([[-8, -16], [8, -16], [-8, 14], [8, 14]]);
+    }
+
+    // 7 – Buckelwal: goldenes Flaggschiff mit Riesenflossen, Geschütztürmen und Krone mit Edelsteinen
+    function drawRealisticHumpbackWhale(t) {
+        let g = Math.sin(t * 2) * 0.5 + 0.5, fl = Math.sin(t * 1.1) * 3;
+        let aura = ctx.createRadialGradient(0, -2, 14, 0, -2, 62);
+        aura.addColorStop(0, 'rgba(255,215,0,' + (0.2 + 0.1 * g) + ')'); aura.addColorStop(1, 'rgba(255,215,0,0)');
+        ctx.fillStyle = aura; ctx.beginPath(); ctx.arc(0, -2, 62, 0, Math.PI * 2); ctx.fill();
+        engineFlame(0, 54, 28, 6, '#fff3b0', t); engineFlame(-10, 50, 22, 4, '#ffd54a', t); engineFlame(10, 50, 22, 4, '#ffd54a', t);
+        celShape(() => { ctx.moveTo(0, 36); ctx.quadraticCurveTo(20, 34, 42, 46 + fl); ctx.lineTo(36, 51 + fl); ctx.lineTo(34, 46 + fl); ctx.lineTo(28, 52 + fl); ctx.lineTo(26, 47 + fl); ctx.lineTo(18, 52); ctx.lineTo(16, 47); ctx.lineTo(8, 50); ctx.lineTo(4, 46); ctx.lineTo(0, 47); }, '#e6b422', '#9a6a00', '#fff0a0', true, 2.6);
+        celShape(() => { ctx.moveTo(16, -14); ctx.bezierCurveTo(28, -24, 36, -14, 40, -6); ctx.bezierCurveTo(44, 0, 46, 10, 48, 26); ctx.bezierCurveTo(36, 18, 24, 10, 15, 4); }, '#f0c030', '#a87800', '#fff3b0', true, 2.8);
+        for (let s of [-1, 1]) {
+            rivets([[s * 26, -18], [s * 34, -14], [s * 40, -6], [s * 44, 4], [s * 46, 14]], '#fff6c8');
+            panel([[s * 20, -4], [s * 40, 6]], 0.45); panel([[s * 18, 2], [s * 42, 16]], 0.45);
+        }
+        celShape(() => { ctx.moveTo(0, -44); ctx.bezierCurveTo(10, -42, 20, -24, 19, -4); ctx.bezierCurveTo(18, 16, 9, 28, 3, 36); ctx.lineTo(0, 36); }, '#f0c030', '#a87800', '#fff3b0', true, 2.8);
+        celShape(() => { ctx.moveTo(0, -34); ctx.lineTo(8, -24); ctx.lineTo(9, 8); ctx.lineTo(4, 26); ctx.lineTo(0, 28); ctx.lineTo(-4, 26); ctx.lineTo(-9, 8); ctx.lineTo(-8, -24); ctx.closePath(); }, '#fff6dc', '#d9c28a', '#ffffff', false, 2.2);
+        celShape(() => { ctx.moveTo(0, -28); ctx.lineTo(3, -20); ctx.lineTo(3, 6); ctx.lineTo(0, 12); ctx.lineTo(-3, 6); ctx.lineTo(-3, -20); ctx.closePath(); }, '#c4122f', '#6a0a1a', '#ff7a8a', false, 1.8);
+        spineArmor(-24, 5, 14, '#c4122f', 9);
+        ctx.fillStyle = '#fff3b0';
+        for (let [x, y] of [[-5, -38], [5, -38], [-8, -32], [8, -32]]) { ctx.beginPath(); ctx.arc(x, y, 1.4, 0, Math.PI * 2); ctx.fill(); ctx.strokeStyle = OL; ctx.lineWidth = 0.7; ctx.stroke(); }
+        for (let s of [-1, 1]) {
+            celEllipse(s * 42, 6, 6, 6, '#8a6a10', '#3a2a00', '#f5d36b');
+            cannon(s * 41, 6, 18, 1.7, '#fff3b0'); cannon(s * 44, 6, 18, 1.7, '#fff3b0');
+            lens(s * 15, -22, 2.8, 2.8, '#fff3b0'); brow(s * 15, -22, 2.8, s);
+        }
+        lens(0, -12, 4, 7, '#ffffff');
+        ctx.save(); ctx.translate(0, -4); ctx.scale(1.25, 1.25);
+        celShape(() => { ctx.moveTo(-14, -44); ctx.lineTo(-7, -38); ctx.lineTo(0, -52); ctx.lineTo(7, -38); ctx.lineTo(14, -44); ctx.lineTo(10, -32); ctx.lineTo(-10, -32); ctx.closePath(); }, '#ffd23f', '#c98a00', '#fff8cc', false, 2.2);
+        lens(0, -37, 1.8, 1.8, '#ff2a4a'); lens(-8, -37, 1.4, 1.4, '#33a0ff'); lens(8, -37, 1.4, 1.4, '#33a0ff');
+        ctx.restore();
     }
 
     class ParodiusHelper {
@@ -1098,7 +1214,7 @@
         tryShoot() {
             let now = Date.now();
             if (now - this.lastFireTime >= (weaponLevel >= 5 ? 140 : 160)) {
-                let color = (weaponLevel >= 5) ? '#ff007f' : (currentTierIndex === 7 ? '#ffea00' : '#00ffcc');
+                let color = (weaponLevel >= 5 || currentTierIndex === 7) ? laserColor() : (currentTierIndex === 7 ? '#ffea00' : '#00ffcc');
                 let scaleFactor = 0.45; // Verkleinerter Maßstab für Helfer-Schüsse
 
                 if (weaponLevel >= 5) {
@@ -1110,7 +1226,6 @@
                         ball.round = true;
                         bullets.push(ball);
                     }
-                    playNeonCannonSound();
                 } else if (weaponLevel >= 3) {
                     // Dual-Kanone für Helfer (verkleinert)
                     bullets.push(new Bullet(this.x - 7, this.y - 12, color, 18 * scaleFactor, 2.5, 14 * scaleFactor, 1));
@@ -1119,7 +1234,6 @@
                     // Einfacher Schuss für Helfer (verkleinert)
                     bullets.push(new Bullet(this.x, this.y - 12, color, 18 * scaleFactor, 2.5, 14 * scaleFactor, 1));
                 }
-                if (weaponLevel < 5) playLaserSound();
                 this.lastFireTime = now;
             }
         }
@@ -1190,7 +1304,7 @@
 
             if (isMouseDown || isDraggingPlayer || keys['Space']) {
                 ctx.save();
-                let muzzleColor = (weaponLevel >= 4) ? '#ff007f' : (currentTierIndex === 7 ? '#ffea00' : '#00ffcc');
+                let muzzleColor = laserColor();
                 let muzzleGrad = ctx.createRadialGradient(0, -32, 0, 0, -32, 14);
                 muzzleGrad.addColorStop(0, '#ffffff');
                 muzzleGrad.addColorStop(0.4, muzzleColor);
@@ -1253,7 +1367,7 @@
 
         shoot() {
             let now = Date.now();
-            let currentColor = (weaponLevel >= 4) ? '#ff007f' : (currentTierIndex === 7 ? '#ffea00' : '#00ffcc');
+            let currentColor = laserColor();
 
             let rate = (weaponLevel >= 4) ? 125 : this.fireRate;
             if (now - lastShot > rate) {
@@ -1302,62 +1416,62 @@
 
         draw() {
             this.animTick += 0.04;
+            let R = this.radius, t = this.animTick;
             ctx.save();
             ctx.translate(this.x, this.y);
 
+            // Tentakel-Arme mit Stahl-Gelenken und Plasma-Spitzen
             for (let i = 0; i < 8; i++) {
-                let angle = (i / 8) * Math.PI * 2;
-                let wave = Math.sin(this.animTick * 2 + i) * 10;
-                let tx = Math.cos(angle) * (this.radius * 0.8);
-                let ty = Math.sin(angle) * (this.radius * 0.8);
-
-                ctx.strokeStyle = '#627eea';
-                ctx.lineWidth = 6;
+                let angle = (i / 8) * Math.PI * 2, wave = Math.sin(t * 2 + i) * 10;
+                let tx = Math.cos(angle) * R * 0.8, ty = Math.sin(angle) * R * 0.8;
+                let cx = tx * 1.5 + wave, cy = ty * 1.5 + wave, ex = tx * 2.2 + wave * 0.5, ey = ty * 2.2 + wave * 0.5;
                 ctx.lineCap = 'round';
-                ctx.beginPath();
-                ctx.moveTo(tx, ty);
-                ctx.quadraticCurveTo(tx * 1.5 + wave, ty * 1.5 + wave, tx * 2.2 + wave * 0.5, ty * 2.2 + wave * 0.5);
-                ctx.stroke();
-
-                ctx.strokeStyle = '#8c9eff';
-                ctx.lineWidth = 2.5;
-                ctx.stroke();
+                for (let [w, c] of [[12, OL], [8, '#4a63c9'], [2.6, '#a9b8ff']]) {
+                    ctx.strokeStyle = c; ctx.lineWidth = w;
+                    ctx.beginPath(); ctx.moveTo(tx, ty); ctx.quadraticCurveTo(cx, cy, ex, ey); ctx.stroke();
+                }
+                for (let u of [0.35, 0.7]) {
+                    let x = (1 - u) * (1 - u) * tx + 2 * (1 - u) * u * cx + u * u * ex, y = (1 - u) * (1 - u) * ty + 2 * (1 - u) * u * cy + u * u * ey;
+                    celEllipse(x, y, 4.4, 4.4, '#8d97ad', '#3a4256', '#e2e8f6');
+                }
+                celEllipse(ex, ey, 6, 6, '#8d97ad', '#3a4256', '#e2e8f6');
+                glowDot(ex, ey, 3.2, '#ff4fd8');
             }
 
-            let ethGrad = ctx.createRadialGradient(-10, -10, 5, 0, 0, this.radius);
-            ethGrad.addColorStop(0, '#ffffff');
-            ethGrad.addColorStop(0.3, '#8c9eff');
-            ethGrad.addColorStop(0.7, '#627eea');
-            ethGrad.addColorStop(1, '#232347');
+            // Panzerstacheln rund um den Körper
+            for (let i = 0; i < 8; i++) {
+                let a = (i + 0.5) / 8 * Math.PI * 2, ca = Math.cos(a), sa = Math.sin(a);
+                const P = (r, w) => [ca * r - sa * w, sa * r + ca * w];
+                celShape(() => { let p1 = P(R - 4, -9), p2 = P(R + 16, 0), p3 = P(R - 4, 9); ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.lineTo(p3[0], p3[1]); ctx.closePath(); }, '#7a8499', '#2e3547', '#d3dbee', false, 2.4);
+            }
 
-            ctx.fillStyle = ethGrad;
-            ctx.shadowBlur = 20;
-            ctx.shadowColor = '#8c9eff';
-            ctx.beginPath();
-            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-            ctx.fill();
+            // Start-Rohre nach unten (Raketenwerfer)
+            ctx.save(); ctx.scale(1, -1);
+            for (let x of [-26, 0, 26]) cannon(x, -(R - 3), 13, 4.6, '#ff3b3b');
+            ctx.restore();
 
-            ctx.strokeStyle = '#a29bfe';
-            ctx.lineWidth = 3;
-            ctx.stroke();
+            // Panzerring mit laufendem Kettenband und roten Warnlampen
+            celEllipse(0, 0, R, R, '#8d97ad', '#3a4256', '#e2e8f6');
+            ctx.save(); ctx.setLineDash([9, 7]); ctx.lineDashOffset = -t * 30; ctx.strokeStyle = '#2e3547'; ctx.lineWidth = 6;
+            ctx.beginPath(); ctx.arc(0, 0, R - 6, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+            for (let k = 0; k < 4; k++) { let a = Math.PI / 4 + k * Math.PI / 2; lens(Math.cos(a) * (R - 6), Math.sin(a) * (R - 6), 4, 4, '#ff3b3b'); }
 
-            ctx.fillStyle = '#ffffff';
-            ctx.beginPath();
-            ctx.moveTo(0, -30);
-            ctx.lineTo(20, 0);
-            ctx.lineTo(0, 10);
-            ctx.lineTo(-20, 0);
-            ctx.closePath();
-            ctx.fill();
+            // Kernfläche mit ETH-Logo
+            let fr = R - 14;
+            celEllipse(0, 0, fr, fr, '#627eea', '#4a63c9', '#8ea3f5');
+            ctx.save(); ctx.scale(fr / 13, fr / 13); drawEthLogo(); ctx.restore();
+            rivets([[-fr * 0.78, -fr * 0.62], [fr * 0.78, -fr * 0.62], [-fr * 0.78, fr * 0.62], [fr * 0.78, fr * 0.62]]);
+            ctx.fillStyle = 'rgba(255,255,255,0.5)'; ctx.beginPath(); ctx.ellipse(-fr * 0.55, -fr * 0.72, 9, 4, -0.7, 0, Math.PI * 2); ctx.fill();
 
-            ctx.fillStyle = '#c8d6e5';
-            ctx.beginPath();
-            ctx.moveTo(0, 14);
-            ctx.lineTo(20, 3);
-            ctx.lineTo(0, 30);
-            ctx.lineTo(-20, 3);
-            ctx.closePath();
-            ctx.fill();
+            // Schaden: Risse und rotes Glühen
+            if (this.hp < this.maxHp * 0.5) {
+                ctx.save(); ctx.shadowBlur = 8; ctx.shadowColor = '#ff2a2a'; ctx.strokeStyle = '#ff2a2a'; ctx.lineWidth = 2; ctx.lineJoin = 'round';
+                ctx.beginPath(); ctx.moveTo(-fr * 0.9, -fr * 0.2); ctx.lineTo(-fr * 0.5, -fr * 0.05); ctx.lineTo(-fr * 0.6, fr * 0.3); ctx.lineTo(-fr * 0.2, fr * 0.5); ctx.stroke();
+                if (this.hp < this.maxHp * 0.25) {
+                    ctx.beginPath(); ctx.moveTo(fr * 0.9, -fr * 0.4); ctx.lineTo(fr * 0.45, -fr * 0.3); ctx.lineTo(fr * 0.6, fr * 0.1); ctx.lineTo(fr * 0.25, fr * 0.35); ctx.stroke();
+                }
+                ctx.restore();
+            }
 
             ctx.restore();
         }
@@ -1418,7 +1532,7 @@
                 ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
                 ctx.fill();
                 ctx.shadowBlur = 6;
-                ctx.fillStyle = '#ffd6ec';
+                ctx.fillStyle = (this.color === '#ff007f') ? '#ffd6ec' : '#fff6c2';
                 ctx.beginPath();
                 ctx.arc(this.x, this.y, this.radius * 0.45, 0, Math.PI * 2);
                 ctx.fill();
@@ -1429,18 +1543,20 @@
             if (this.neon) {
                 let pulse = 1 + Math.sin(this.animTick * 2) * 0.12;
                 ctx.lineCap = 'round';
-                ctx.shadowColor = '#ff007f';
+                let core = (this.color === '#ff007f') ? '#ffc2e6' : '#fff6c2';
+                ctx.shadowColor = this.color;
                 // äußerer Neon-Schein
                 ctx.shadowBlur = 45;
-                ctx.strokeStyle = 'rgba(255, 0, 127, 0.35)';
+                ctx.globalAlpha = 0.35; ctx.strokeStyle = this.color;
                 ctx.lineWidth = this.radius * 3.2 * pulse;
                 ctx.beginPath();
                 ctx.moveTo(this.x, this.y - this.length * 0.5);
                 ctx.lineTo(this.x, this.y + this.length * 0.5);
                 ctx.stroke();
-                // pinker Hauptstrahl
+                // Hauptstrahl
+                ctx.globalAlpha = 1;
                 ctx.shadowBlur = 30;
-                ctx.strokeStyle = '#ff007f';
+                ctx.strokeStyle = this.color;
                 ctx.lineWidth = this.radius * 1.8;
                 ctx.beginPath();
                 ctx.moveTo(this.x, this.y - this.length * 0.5);
@@ -1448,7 +1564,7 @@
                 ctx.stroke();
                 // heller rosa Kern
                 ctx.shadowBlur = 15;
-                ctx.strokeStyle = '#ffc2e6';
+                ctx.strokeStyle = core;
                 ctx.lineWidth = Math.max(2, this.radius * 0.7);
                 ctx.beginPath();
                 ctx.moveTo(this.x, this.y - this.length * 0.5);
@@ -1530,40 +1646,34 @@
         draw() {
             ctx.save();
             ctx.translate(this.x, this.y);
-            ctx.rotate(this.rotation);
+            let R = this.radius, pulse = 0.5 + 0.5 * Math.sin(Date.now() / 160);
 
-            ctx.fillStyle = '#ff2a2a';
-            ctx.strokeStyle = '#ff7675';
-            ctx.lineWidth = 2;
+            // Stahl-Stacheln mit roten Spitzen (drehen sich, Schattierung bleibt fest)
             for (let i = 0; i < this.spikes; i++) {
-                let angle = (i / this.spikes) * Math.PI * 2;
-                ctx.save();
-                ctx.rotate(angle);
-                ctx.beginPath();
-                ctx.moveTo(-5, -this.radius + 2);
-                ctx.lineTo(0, -this.radius - 12);
-                ctx.lineTo(5, -this.radius + 2);
-                ctx.closePath();
-                ctx.fill();
-                ctx.stroke();
-                ctx.restore();
+                let a = this.rotation + (i / this.spikes) * Math.PI * 2;
+                let ca = Math.cos(a), sa = Math.sin(a), px = -sa, py = ca; // Richtung & Querachse
+                const P = (r, w) => [ca * r + px * w, sa * r + py * w];
+                celShape(() => {
+                    let p1 = P(R - 3, -6), p2 = P(R + 13, 0), p3 = P(R - 3, 6);
+                    ctx.moveTo(p1[0], p1[1]); ctx.lineTo(p2[0], p2[1]); ctx.lineTo(p3[0], p3[1]); ctx.closePath();
+                }, '#c93a3a', '#6a0f14', '#ff9a9a', false, 2);
+                let tip = P(R + 13, 0), mid1 = P(R + 5, -2.6), mid2 = P(R + 5, 2.6);
+                ctx.fillStyle = '#ffd0d0'; ctx.beginPath(); ctx.moveTo(tip[0], tip[1]); ctx.lineTo(mid1[0], mid1[1]); ctx.lineTo(mid2[0], mid2[1]); ctx.closePath(); ctx.fill();
             }
 
-            ctx.fillStyle = '#000000';
-            ctx.shadowBlur = 15;
-            ctx.shadowColor = '#ff0000';
-            ctx.beginPath();
-            ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
-            ctx.fill();
-
-            ctx.fillStyle = '#ffffff';
-            ctx.font = '900 11px "Segoe UI", sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.shadowBlur = 8;
-            ctx.shadowColor = '#ff0000';
-            ctx.fillText('FUD', 0, 0);
-
+            // Panzerkugel
+            celEllipse(0, 0, R, R, '#3d4558', '#14181f', '#8793aa');
+            // rotes Energieband (leuchtet pulsierend)
+            ctx.save(); ctx.shadowBlur = 8 + 8 * pulse; ctx.shadowColor = '#ff0000'; ctx.strokeStyle = '#ff2a2a'; ctx.lineWidth = 2.4;
+            ctx.beginPath(); ctx.arc(0, 0, R - 4, 0, Math.PI * 2); ctx.stroke(); ctx.restore();
+            for (let k = 0; k < 8; k++) { let a = this.rotation * 2 + k * Math.PI / 4; rivets([[Math.cos(a) * (R - 1.6), Math.sin(a) * (R - 1.6)]]); }
+            // Kern-Plakette mit FUD
+            celEllipse(0, 0, R - 8, R - 8, '#2a0b10', '#0a0204', '#7a2630');
+            ctx.fillStyle = '#ffffff'; ctx.font = '900 10px "Segoe UI", sans-serif';
+            ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+            ctx.save(); ctx.shadowBlur = 8; ctx.shadowColor = '#ff0000'; ctx.fillText('FUD', 0, 0.5); ctx.restore();
+            // Glanzpunkt
+            ctx.fillStyle = 'rgba(255,255,255,0.55)'; ctx.beginPath(); ctx.ellipse(-8, -10, 4, 2, -0.7, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
         update() {
@@ -1623,26 +1733,40 @@
         draw() {
             ctx.save();
             ctx.translate(this.x, this.y);
+            let t = Date.now() / 1000;
+            let isT = this.type === 'USDT';
+            let accent = isT ? '#26a17b' : '#00ffcc';
+            let base = isT ? '#26a17b' : '#627eea', shade = isT ? '#0f6e52' : '#4a63c9', light = isT ? '#8df0cb' : '#8ea3f5';
 
-            let mainColor = this.type === 'USDT' ? '#26a17b' : '#00ffcc';
-            let gradStart = this.type === 'USDT' ? '#26a17b' : '#8c9eff';
-            let gradMid = this.type === 'USDT' ? '#00d294' : '#627eea';
-            let labelText = this.type === 'USDT' ? 'T' : 'ETH';
+            // Abgas-Flamme nach hinten (oben)
+            ctx.save(); ctx.scale(1, -1); engineFlame(0, 12, 14, 4.5, accent, t); ctx.restore();
+            // seitliche Stabilisatoren
+            for (let sd of [-1, 1]) {
+                celShape(() => { ctx.moveTo(sd * 14, -6); ctx.lineTo(sd * 23, -12); ctx.lineTo(sd * 21, 2); ctx.lineTo(sd * 14, 4); ctx.closePath(); }, '#7a8499', '#2e3547', '#d3dbee', false, 1.8);
+                ctx.fillStyle = accent; ctx.fillRect(sd * 18 - 1, -8, 2, 6);
+            }
+            // Front-Kanone (zeigt nach unten)
+            ctx.save(); ctx.scale(1, -1); cannon(0, -14, 8, 2.2, '#ff3b3b'); ctx.restore();
 
-            ctx.fillStyle = mainColor;
-            ctx.shadowBlur = 10; ctx.shadowColor = mainColor;
-            ctx.beginPath(); ctx.moveTo(-4, -12); ctx.lineTo(0, -22); ctx.lineTo(4, -12); ctx.fill();
+            // Panzer-Rahmen + Münzfläche
+            celEllipse(0, 0, 16.5, 16.5, '#8d97ad', '#3a4256', '#e2e8f6');
+            celEllipse(0, 0, 13, 13, base, shade, light);
+            for (let k = 0; k < 4; k++) { let a = Math.PI / 4 + k * Math.PI / 2; rivets([[Math.cos(a) * 14.5, Math.sin(a) * 14.5]]); }
 
-            let ethGrad = ctx.createLinearGradient(-12, -12, 12, 12);
-            ethGrad.addColorStop(0, gradStart); ethGrad.addColorStop(0.5, gradMid); ethGrad.addColorStop(1, '#3c3c3d');
-
-            ctx.fillStyle = ethGrad; ctx.shadowBlur = 12; ctx.shadowColor = gradMid;
-            ctx.beginPath(); ctx.arc(0, 0, this.radius, 0, Math.PI * 2); ctx.fill();
-
-            ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.5; ctx.stroke();
-
-            ctx.fillStyle = '#ffffff'; ctx.font = '900 12px "Segoe UI", sans-serif';
-            ctx.textAlign = 'center'; ctx.textBaseline = 'middle'; ctx.fillText(labelText, 0, 1);
+            // Logo
+            ctx.lineJoin = 'round';
+            if (isT) {
+                // Tether: T mit Ring
+                ctx.fillStyle = '#ffffff'; ctx.strokeStyle = OL; ctx.lineWidth = 0.7;
+                ctx.beginPath(); ctx.rect(-7.2, -8, 14.4, 4.2); ctx.fill(); ctx.stroke();
+                ctx.beginPath(); ctx.rect(-2.2, -4, 4.4, 12.5); ctx.fill(); ctx.stroke();
+                ctx.strokeStyle = base; ctx.lineWidth = 3; ctx.beginPath(); ctx.ellipse(0, 0.2, 8, 2.6, 0, 0, Math.PI * 2); ctx.stroke();
+                ctx.strokeStyle = '#ffffff'; ctx.lineWidth = 1.3; ctx.beginPath(); ctx.ellipse(0, 0.2, 8, 2.6, 0, 0, Math.PI * 2); ctx.stroke();
+            } else {
+                drawEthLogo();
+            }
+            // Glanzpunkt
+            ctx.fillStyle = 'rgba(255,255,255,0.7)'; ctx.beginPath(); ctx.ellipse(-6.5, -8.5, 2.6, 1.3, -0.7, 0, Math.PI * 2); ctx.fill();
             ctx.restore();
         }
 
@@ -1918,6 +2042,10 @@
 
         if (newIndex > currentTierIndex) {
             currentTierIndex = newIndex;
+            if (currentTierIndex === 7) { // Buckelwal: immer volle Waffen inkl. Helfer
+                weaponLevel = 5;
+                lightningCoinCount = Math.max(lightningCoinCount, 5);
+            }
             playCashSound();
             triggerLevelUpFireworks();
 
@@ -2084,6 +2212,9 @@
 
                     let mxMissile = Math.random() * (canvas.width - 160) + 80;
                     homingMissiles.push(new HomingMissile(mxMissile, -50, 'USDT'));
+                    // doppelt so viele T-Münzen im Boss-Kampf
+                    let mxMissile2 = Math.random() * (canvas.width - 160) + 80;
+                    homingMissiles.push(new HomingMissile(mxMissile2, -80, 'USDT'));
 
                     lastBossMineSpawn = nowTime;
                 }
@@ -2133,6 +2264,7 @@
 
             for (let i = spikeMines.length - 1; i >= 0; i--) {
                 let sm = spikeMines[i];
+                if (!sm) continue;
                 sm.update();
                 sm.draw();
 
@@ -2155,6 +2287,7 @@
 
             for (let i = enemyProjectiles.length - 1; i >= 0; i--) {
                 let ep = enemyProjectiles[i];
+                if (!ep) continue;
                 ep.update();
                 ep.draw();
 
@@ -2174,6 +2307,7 @@
 
             for (let i = powerUpCoins.length - 1; i >= 0; i--) {
                 let coin = powerUpCoins[i];
+                if (!coin) continue;
                 coin.update();
                 coin.draw();
 
@@ -2214,6 +2348,7 @@
 
             for (let i = goldenBItems.length - 1; i >= 0; i--) {
                 let gb = goldenBItems[i];
+                if (!gb) continue;
                 gb.update();
                 gb.draw();
 
@@ -2244,6 +2379,7 @@
 
             for (let i = homingMissiles.length - 1; i >= 0; i--) {
                 let m = homingMissiles[i];
+                if (!m) continue;
                 m.update();
                 m.draw();
 
@@ -2278,6 +2414,7 @@
 
             for (let i = enemies.length - 1; i >= 0; i--) {
                 let e = enemies[i];
+                if (!e) continue;
                 e.update();
                 e.draw();
 
